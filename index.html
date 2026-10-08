@@ -70,7 +70,6 @@
       <button data-action="import">Import JSON</button>
       <button data-action="export">Export JSON</button>
       <button data-action="share" title="Copy a link to this factory (the address bar always has it)">Copy link</button>
-      <input id="import-file" type="file" accept=".json,application/json" hidden>
     </div>
     <div class="group">
       <button data-action="undo" title="Undo (Ctrl+Z)">Undo</button>
@@ -175,6 +174,31 @@
     <span id="status-cell"></span>
     <span id="status-msg"></span>
   </footer>
+
+  <dialog id="import-dialog" class="dialog" aria-labelledby="import-dialog-title">
+    <div class="dialog-card">
+      <header class="dialog-header">
+        <h2 id="import-dialog-title">Import layout JSON</h2>
+        <button type="button" class="dialog-x" id="import-close-btn" aria-label="Close">&times;</button>
+      </header>
+      <div class="dialog-body">
+        <p class="dialog-desc">Upload a layout file or paste JSON below.</p>
+        <div class="dialog-file-row">
+          <label class="file-picker-btn">
+            Choose file…
+            <input id="import-dialog-file" type="file" accept=".json,application/json">
+          </label>
+          <span id="import-dialog-filename" class="file-name-hint">No file chosen</span>
+        </div>
+        <textarea id="import-json-text" class="import-textarea" rows="11" spellcheck="false" placeholder="Paste JSON here..." aria-label="Layout JSON text"></textarea>
+        <div id="import-error" class="dialog-error" role="alert" hidden></div>
+      </div>
+      <footer class="dialog-footer">
+        <button type="button" id="import-cancel-btn">Cancel</button>
+        <button type="button" id="import-submit-btn" class="primary">Import</button>
+      </footer>
+    </div>
+  </dialog>
 
   <script type="module" src="src/main.js"></script>
 </body>

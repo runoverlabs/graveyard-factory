@@ -142,8 +142,16 @@ kbd {
 .statusbar {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 16px;
-  padding: 4px 12px;
+  padding: 0 12px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  line-height: 28px;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
   background: var(--panel);
   border-top: 1px solid var(--border);
   color: var(--muted);
@@ -178,6 +186,147 @@ table.prod td.num { text-align: right; white-space: nowrap; font-variant-numeric
 .preview-banner { display: none; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #1e90ffdd; color: #fff; padding: 4px 12px; border-radius: 12px; font-weight: 600; pointer-events: none; }
 .canvas-wrap.previewing .preview-banner { display: block; }
 
+/* Import dialog */
+dialog {
+  margin: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  max-width: min(520px, calc(100vw - 32px));
+  width: 500px;
+}
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(2px);
+}
+.dialog-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.dialog-card.drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+}
+.dialog-header h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.dialog-x {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.dialog-x:hover {
+  color: var(--text);
+  background: var(--border);
+}
+.dialog-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dialog-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.dialog-file-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.file-picker-btn {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text);
+  user-select: none;
+}
+.file-picker-btn:hover {
+  border-color: var(--muted);
+}
+.file-picker-btn input[type=file] {
+  position: absolute;
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  z-index: -1;
+}
+.file-name-hint {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.import-textarea {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  resize: vertical;
+  min-height: 160px;
+  max-height: 45vh;
+  padding: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  box-sizing: border-box;
+}
+.import-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.dialog-error {
+  color: var(--error);
+  font-size: 12px;
+  background: #e5484d18;
+  border: 1px solid #e5484d44;
+  border-radius: 4px;
+  padding: 6px 10px;
+  word-break: break-word;
+}
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--panel-2);
+  border-top: 1px solid var(--border);
+}
 .changelog {
   width: min(520px, calc(100vw - 32px));
   max-height: min(70vh, 600px);

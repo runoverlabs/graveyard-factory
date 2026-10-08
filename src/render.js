@@ -156,10 +156,13 @@ export function drawLayout(ctx, layout, view, overlay = {}) {
   if (overlay.showGrid !== false) drawGrid(ctx, layout, cell, x0, y0, x1, y1, bgShown);
   drawSections(ctx, layout, cell, overlay.highlightSection);
 
-  // Layout boundary.
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0, 0, layout.width * cell, layout.height * cell);
+  // Layout boundary (only when background is hidden or editing terrain, so it doesn't
+  // draw an artificial rectangular box across the irregular factory walls).
+  if (!bgShown || overlay.editingTerrain) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, layout.width * cell, layout.height * cell);
+  }
 
   // Conveyors first, then stations, chests and distributors over them; each
   // top to bottom, so lower pieces overlap the overhangs of the ones above.
