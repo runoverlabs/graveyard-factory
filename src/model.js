@@ -6,6 +6,7 @@ import {
   DIRS, STATIONS, ENTITY_KINDS, RECIPE_BY_ID, ITEM_BY_ID, EXTENSIONS, CHEST_LEVELS, POWER_COST, ZOMBIE_POWER, stationVariants, defaultVariant,
   BELT_ACCEPTS_FROM_SIDES, UNDERGROUND_GAP_MUST_BE_FLOOR, UNDERGROUND_GAP_KINDS, DISTRIBUTOR_FRONT_KINDS, FACTORY_DISTRIBUTORS, FACTORY_GARDEN_DISTRIBUTORS, GARDEN_ITEMS, portersFor, FACTORY_CELLAR, CELLAR_ITEMS, FLOOR_SECTIONS, FLOOR_GRID, FLOOR_HOLES, entityCells, recipesFor, isSupplyItem,
 } from './catalog.js';
+import { t } from './i18n.js';
 
 /** @typedef {import('./types.js').Dir} Dir */
 /** @typedef {import('./types.js').Entity} Entity */
@@ -62,10 +63,10 @@ import {
 // A cell is either factory floor or not. Older files also had walls ('#') and
 // columns ('O'); neither could hold pieces, so they load as outside.
 export const VOID = ' ', FLOOR = '.';
-/** @type {{ id: Terrain, name: string }[]} */
+/** @type {{ id: Terrain, key: string }[]} key is the `terrain.<…>` string naming it */
 export const TERRAIN_TYPES = [
-  { id: FLOOR, name: 'Floor' },
-  { id: VOID, name: 'Outside' },
+  { id: FLOOR, key: 'terrain.floor' },
+  { id: VOID, key: 'terrain.void' },
 ];
 /** @type {Record<string, Terrain>} */
 const TERRAIN_ALIASES = { '_': VOID, '#': VOID, 'O': VOID, 'o': VOID, '0': VOID };
@@ -182,7 +183,7 @@ export class Layout {
   resize({ left = 0, top = 0, right = 0, bottom = 0 }, fill = VOID) {
     const nw = this.width + left + right;
     const nh = this.height + top + bottom;
-    if (nw < 1 || nh < 1) throw new Error('Layout must be at least 1x1');
+    if (nw < 1 || nh < 1) throw new Error(t('error.minSize'));
     const terrain = new Array(nw * nh).fill(fill);
     for (let y = 0; y < nh; y++) {
       for (let x = 0; x < nw; x++) {
@@ -305,23 +306,23 @@ export class Layout {
     const live = (other) => other && !ignoreIds.includes(other.id) ? other : null;
     const fronts = this.distributorFronts();
     for (const [i, c] of entityCells(e).entries()) {
-      if (!this.inBounds(c.x, c.y)) return { ok: false, reason: 'Outside the layout' };
+      if (!this.inBounds(c.x, c.y)) return { ok: false, reason: t('place.outside') };
       const front = fronts.get(c.y * this.width + c.x);
       if (front && live(front.dist) && !fitsFront(e, i, front.back)) {
-        return { ok: false, reason: `In front of ${describeEntity(front.dist)} only a belt or an underground's belt cell can go, not pointing into it` };
+        return { ok: false, reason: t('place.frontOfDist', { dist: describeEntity(front.dist) }) };
       }
-      const t = this.getTerrain(c.x, c.y);
+      const terrain = this.getTerrain(c.x, c.y);
       const occupant = live(this.entityAt(c.x, c.y));
       const gapOwner = live(this.gapAt(c.x, c.y));
       if (c.gap) {
-        if (UNDERGROUND_GAP_MUST_BE_FLOOR && t !== FLOOR) return { ok: false, reason: 'Gap is off the factory floor' };
-        if (occupant && !UNDERGROUND_GAP_KINDS.includes(occupant.kind)) return { ok: false, reason: `Only a belt, chest or underground can sit on the gap, not ${describeEntity(occupant)}` };
-        if (gapOwner) return { ok: false, reason: `Gap overlaps the gap of ${describeEntity(gapOwner)}` };
+        if (UNDERGROUND_GAP_MUST_BE_FLOOR && terrain !== FLOOR) return { ok: false, reason: t('place.gapOffFloor') };
+        if (occupant && !UNDERGROUND_GAP_KINDS.includes(occupant.kind)) return { ok: false, reason: t('place.gapOnlyBelt', { what: describeEntity(occupant) }) };
+        if (gapOwner) return { ok: false, reason: t('place.gapOverlap', { what: describeEntity(gapOwner) }) };
         continue;
       }
-      if (t !== FLOOR && !ENTITY_KINDS[e.kind]?.fixed) return { ok: false, reason: 'Off the factory floor' };
-      if (occupant) return { ok: false, reason: `Overlaps ${describeEntity(occupant)}` };
-      if (gapOwner && !UNDERGROUND_GAP_KINDS.includes(e.kind)) return { ok: false, reason: `Only a belt, chest or underground can sit on the gap of ${describeEntity(gapOwner)}` };
+      if (terrain !== FLOOR && !ENTITY_KINDS[e.kind]?.fixed) return { ok: false, reason: t('place.offFloor') };
+      if (occupant) return { ok: false, reason: t('place.overlaps', { what: describeEntity(occupant) }) };
+      if (gapOwner && !UNDERGROUND_GAP_KINDS.includes(e.kind)) return { ok: false, reason: t('place.onGapOf', { what: describeEntity(gapOwner) }) };
     }
     return { ok: true };
   }
@@ -513,53 +514,53 @@ export class Layout {
           break;
         }
         if (c.gap) {
-          if (UNDERGROUND_GAP_MUST_BE_FLOOR && !this.isFloor(x, y)) add('error', e, `${describeEntity(e)}: gap is off the factory floor`, [[x, y]]);
+          if (UNDERGROUND_GAP_MUST_BE_FLOOR && !this.isFloor(x, y)) add('error', e, t('issue.gapOffFloor', { what: describeEntity(e) }), [[x, y]]);
           const crossing = this.entityAt(x, y);
-          if (crossing && !UNDERGROUND_GAP_KINDS.includes(crossing.kind)) add('error', e, `${describeEntity(crossing)} sits in the gap of ${describeEntity(e)}`, [[x, y]]);
+          if (crossing && !UNDERGROUND_GAP_KINDS.includes(crossing.kind)) add('error', e, t('issue.inGap', { crossing: describeEntity(crossing), what: describeEntity(e) }), [[x, y]]);
           continue;
         }
-        if (!this.isFloor(x, y) && !ENTITY_KINDS[e.kind]?.fixed) { add('error', e, `${describeEntity(e)} is off the factory floor`, [[x, y]]); break; }
+        if (!this.isFloor(x, y) && !ENTITY_KINDS[e.kind]?.fixed) { add('error', e, t('issue.offFloor', { what: describeEntity(e) }), [[x, y]]); break; }
         const k = y * this.width + x;
-        if (seen.has(k)) { add('error', e, `${describeEntity(e)} overlaps ${describeEntity(seen.get(k))}`, [[x, y]]); break; }
+        if (seen.has(k)) { add('error', e, t('issue.overlap', { what: describeEntity(e), other: describeEntity(seen.get(k)) }), [[x, y]]); break; }
         seen.set(k, e);
       }
 
       if (e.garden) {
-        if (e.material && !GARDEN_ITEMS.includes(e.material)) add('error', e, `${describeEntity(e)} can't hold ${ITEM_BY_ID[e.material]?.name ?? `"${e.material}"`}`);
+        if (e.material && !GARDEN_ITEMS.includes(e.material)) add('error', e, t('issue.cantHold', { what: describeEntity(e), item: ITEM_BY_ID[e.material]?.name ?? `"${e.material}"` }));
       } else if (ENTITY_KINDS[e.kind]?.hasMaterial && !ITEM_BY_ID[e.material]) {
-        add('warning', e, `${describeEntity(e)} has no material set`);
+        add('warning', e, t('issue.noMaterial', { what: describeEntity(e) }));
       }
       if (e.kind === 'cellar') {
-        for (const id of e.stock) if (!CELLAR_ITEMS.includes(id)) add('error', e, `${describeEntity(e)} can't hold ${ITEM_BY_ID[id]?.name ?? `"${id}"`}`);
+        for (const id of e.stock) if (!CELLAR_ITEMS.includes(id)) add('error', e, t('issue.cantHold', { what: describeEntity(e), item: ITEM_BY_ID[id]?.name ?? `"${id}"` }));
       }
       if (e.kind === 'chest') {
-        if (!CHEST_LEVELS[e.level]) add('error', e, `${describeEntity(e)}: unknown chest level ${e.level}`);
-        for (const id of e.stock) if (!ITEM_BY_ID[id]) add('error', e, `${describeEntity(e)}: unknown stock item "${id}"`);
+        if (!CHEST_LEVELS[e.level]) add('error', e, t('issue.unknownChestLevel', { what: describeEntity(e), level: e.level }));
+        for (const id of e.stock) if (!ITEM_BY_ID[id]) add('error', e, t('issue.unknownStock', { what: describeEntity(e), id }));
         for (const [side, id] of Object.entries(e.filters)) {
-          if (!DIRS.some((d) => d.name === side)) add('error', e, `${describeEntity(e)}: unknown filter side "${side}"`);
-          if (!ITEM_BY_ID[id]) add('error', e, `${describeEntity(e)}: unknown filter item "${id}" on side ${side}`);
+          if (!DIRS.some((d) => d.name === side)) add('error', e, t('issue.unknownFilterSide', { what: describeEntity(e), side }));
+          if (!ITEM_BY_ID[id]) add('error', e, t('issue.unknownFilterItem', { what: describeEntity(e), id, side }));
         }
       }
 
       if (e.kind === 'station') {
-        if (!STATIONS[e.type].levels.includes(e.level)) add('error', e, `${STATIONS[e.type].name} has no level ${e.level}`);
-        if (!stationVariants(e.type)[e.variant]) add('error', e, `${describeEntity(e)}: unknown layout "${e.variant}"`);
+        if (!STATIONS[e.type].levels.includes(e.level)) add('error', e, t('issue.noLevel', { station: STATIONS[e.type].name, level: e.level }));
+        if (!stationVariants(e.type)[e.variant]) add('error', e, t('issue.unknownLayout', { what: describeEntity(e), id: e.variant }));
         /** @type {Map<string, string>} extension slot -> extension id */
         const slots = new Map();
         for (const id of e.extensions) {
           const x = EXTENSIONS[id];
-          if (!x) { add('error', e, `${describeEntity(e)}: unknown extension "${id}"`); continue; }
-          if (x.station !== e.type) add('error', e, `${describeEntity(e)} can't take the ${x.name} extension`);
-          else if (slots.has(x.slot)) add('error', e, `${describeEntity(e)}: ${EXTENSIONS[slots.get(x.slot)].name} and ${x.name} need the same ${x.slot} slot`);
+          if (!x) { add('error', e, t('issue.unknownExtension', { what: describeEntity(e), id }), undefined); continue; }
+          if (x.station !== e.type) add('error', e, t('issue.cantTakeExtension', { what: describeEntity(e), name: x.name }));
+          else if (slots.has(x.slot)) add('error', e, t('issue.slotClash', { what: describeEntity(e), a: EXTENSIONS[slots.get(x.slot)].name, b: x.name, slot: t(`slot.${x.slot}`) }));
           slots.set(x.slot, id);
         }
         const recipe = RECIPE_BY_ID[e.recipe];
-        if (!e.recipe) add('info', e, `${describeEntity(e)} has no recipe assigned`);
-        else if (!recipe) add('error', e, `${describeEntity(e)}: unknown recipe "${e.recipe}"`);
+        if (!e.recipe) add('info', e, t('issue.noRecipe', { what: describeEntity(e) }));
+        else if (!recipe) add('error', e, t('issue.unknownRecipe', { what: describeEntity(e), id: e.recipe }));
         else if (!recipesFor(e.type, e.level).some((r) => r.id === e.recipe)) {
-          add('error', e, `${describeEntity(e)} cannot run recipe "${e.recipe}"`);
+          add('error', e, t('issue.cantRunRecipe', { what: describeEntity(e), id: e.recipe }));
         } else if (recipe.extension && !e.extensions.includes(recipe.extension)) {
-          add('error', e, `${describeEntity(e)} needs the ${EXTENSIONS[recipe.extension].name} extension for its recipe`);
+          add('error', e, t('issue.needsExtension', { what: describeEntity(e), name: EXTENSIONS[recipe.extension].name }));
         }
       }
 
@@ -570,16 +571,16 @@ export class Layout {
       for (const o of new Set([this.entityAt(x, y), this.gapAt(x, y)])) {
         if (!o) continue;
         const i = entityCells(o).findIndex((c) => c.x === x && c.y === y);
-        if (!fitsFront(o, i, back)) add('error', o, `${describeEntity(o)} can't be in front of ${describeEntity(dist)}: only a belt or an underground's belt cell can go there, not pointing into it`, [[x, y]]);
+        if (!fitsFront(o, i, back)) add('error', o, t('issue.frontOfDist', { what: describeEntity(o), dist: describeEntity(dist) }), [[x, y]]);
       }
     }
-    for (const c of this.supplyIntoChests().chests) add('error', c, `${describeEntity(c)} can't take "Supply: …" items, but a belt carries them into it`);
+    for (const c of this.supplyIntoChests().chests) add('error', c, t('issue.supplyIntoChest', { what: describeEntity(c) }));
     const supplyStations = this.entities.filter((e) => e.kind === 'supply_station').length;
     const porters = this.entities.filter((e) => e.kind === 'porter').length;
-    if (porters < portersFor(supplyStations)) add('info', null, `${supplyStations} supply station${supplyStations === 1 ? '' : 's'} need ${portersFor(supplyStations)} Zombie Supply Porter${portersFor(supplyStations) === 1 ? '' : 's'}, one for every 3; ${porters} placed`, []);
+    if (porters < portersFor(supplyStations)) add('info', null, t('issue.porters', { stations: t('count.supplyStations', { n: supplyStations }), porters: t('count.porters', { n: portersFor(supplyStations) }), placed: porters }), []);
     const power = this.powerSupply();
     if (power.over) {
-      add('warning', null, `Power ${power.used} is over the factory's ${power.available} (${power.maxZombies} zombies on ${power.carousels} carousels): ${power.over} too many`, []);
+      add('warning', null, t('issue.power', { used: power.used, available: power.available, maxZombies: power.maxZombies, carousels: power.carousels, over: power.over }), []);
     }
     return issues;
   }
@@ -590,29 +591,29 @@ export class Layout {
    * @param {AddIssue} add
    */
   _validatePort(e, p, add) {
-    const what = e.kind === 'belt' ? `Belt at ${e.x},${e.y}` : describeEntity(e);
+    const what = e.kind === 'belt' ? t('issue.beltAt', { x: e.x, y: e.y }) : describeEntity(e);
     if (!this.isFloor(p.nx, p.ny)) {
-      add('warning', e, e.kind === 'belt' ? `${what} runs off the factory floor` : `${what}: ${p.kind === 'in' ? 'input' : 'output'} ${DIRS[p.dir].name} faces off the factory floor`, [[p.nx, p.ny]]);
+      add('warning', e, e.kind === 'belt' ? t('issue.beltRunsOff', { what }) : t('issue.portFacesOff', { what, port: t(p.kind === 'in' ? 'port.input' : 'port.output'), dir: DIRS[p.dir].name }), [[p.nx, p.ny]]);
       return;
     }
     if (p.kind === 'in') {
       // Chests only output onto belts: one placed against a station input does nothing.
       const source = this.entityAt(p.nx, p.ny);
       if (source?.kind === 'chest' && e.kind === 'station') {
-        add('warning', e, `${describeEntity(source)} can't feed ${describeEntity(e)} directly — put a belt in between`, [[p.x, p.y], [p.nx, p.ny]]);
+        add('warning', e, t('issue.chestCantFeed', { chest: describeEntity(source), station: describeEntity(e) }), [[p.x, p.y], [p.nx, p.ny]]);
       }
       return;
     }
     const target = this.entityAt(p.nx, p.ny);
     if (e.kind === 'station' && target?.kind === 'chest' && DIRS[p.dir].dx !== 0) {
-      add('warning', e, `${what}: a side output can't push straight into ${describeEntity(target)} — put a belt in between`, [[p.x, p.y], [p.nx, p.ny]]);
+      add('warning', e, t('issue.sideOutputChest', { what, chest: describeEntity(target) }), [[p.x, p.y], [p.nx, p.ny]]);
       return;
     }
     if (!target || this.acceptsFrom(target, p.x, p.y)) return;
     if (e.kind === 'belt' && target.kind === 'belt' && target.rot === mod4(e.rot + 2)) {
-      add('warning', e, `Belts at ${e.x},${e.y} and ${p.nx},${p.ny} face each other`, [[e.x, e.y], [p.nx, p.ny]]);
+      add('warning', e, t('issue.beltsFaceEachOther', { a: `${e.x},${e.y}`, b: `${p.nx},${p.ny}` }), [[e.x, e.y], [p.nx, p.ny]]);
     } else {
-      add('warning', e, `${what} feeds ${describeEntity(target)} from a side with no input`, [[p.x, p.y], [p.nx, p.ny]]);
+      add('warning', e, t('issue.feedsNoInput', { what, target: describeEntity(target) }), [[p.x, p.y], [p.nx, p.ny]]);
     }
   }
 
@@ -642,7 +643,7 @@ export class Layout {
    */
   static fromJSON(json) {
     const data = /** @type {LayoutJSON} */ (typeof json === 'string' ? JSON.parse(json) : json);
-    if (!Array.isArray(data.terrain)) throw new Error('Missing "terrain" rows');
+    if (!Array.isArray(data.terrain)) throw new Error(t('error.missingTerrain'));
     const layout = new Layout({ name: data.name, width: 1, height: 1, entities: [], planner: data.planner, beltMaster: !!data.beltMaster });
     layout.setTerrainFromText(data.terrain.join('\n'));
     if (data.width) layout.resize({ right: data.width - layout.width });
@@ -650,8 +651,8 @@ export class Layout {
     for (const e of data.entities ?? []) {
       // Zombie carousels used to be placeable; the factory's are fixed.
       if (/** @type {string} */ (e.kind) === 'carousel') continue;
-      if (!ENTITY_KINDS[e.kind]) throw new Error(`Unknown entity kind "${e.kind}"`);
-      if (e.kind === 'station' && !STATIONS[e.type]) throw new Error(`Unknown station type "${e.type}"`);
+      if (!ENTITY_KINDS[e.kind]) throw new Error(t('error.unknownKind', { id: e.kind }));
+      if (e.kind === 'station' && !STATIONS[e.type]) throw new Error(t('error.unknownStation', { id: e.type }));
       // Ids missing from old files are assigned below.
       layout.entities.push(/** @type {Entity} */ (normalizeEntity({ ...e })));
     }
@@ -731,9 +732,9 @@ function parseTerrainRows(lines) {
   const valid = new Set([VOID, FLOOR]);
   return lines.map((line) =>
     [...line].map((c) => {
-      const t = TERRAIN_ALIASES[c] ?? c;
-      if (!valid.has(t)) throw new Error(`Unknown terrain character "${c}"`);
-      return t;
+      const terrain = TERRAIN_ALIASES[c] ?? c;
+      if (!valid.has(terrain)) throw new Error(t('error.unknownTerrain', { id: c }));
+      return terrain;
     }),
   );
 }
@@ -799,11 +800,12 @@ export function powerOf(entities) {
 }
 
 /**
- * @param {Terrain} t
+ * @param {Terrain} terrain
  * @returns {string}
  */
-export function terrainName(t) {
-  return TERRAIN_TYPES.find((tt) => tt.id === t)?.name ?? 'Unknown';
+export function terrainName(terrain) {
+  const type = TERRAIN_TYPES.find((tt) => tt.id === terrain);
+  return t(type ? type.key : 'terrain.unknown');
 }
 
 /**
@@ -813,9 +815,9 @@ export function terrainName(t) {
 export function describeEntity(e) {
   if (e.kind === 'station') {
     const roman = ['', 'I', 'II', 'III'][e.level] ?? e.level;
-    return `${STATIONS[e.type]?.name ?? e.type} ${roman} at ${e.x},${e.y}`;
+    return t('entity.at', { what: `${STATIONS[e.type]?.name ?? e.type} ${roman}`, x: e.x, y: e.y });
   }
   const items = e.kind === 'chest' || e.kind === 'cellar' ? e.stock ?? [] : e.material ? [e.material] : [];
   const mat = items.length ? ` (${items.map((id) => ITEM_BY_ID[id]?.name ?? id).join(', ')})` : '';
-  return `${ENTITY_KINDS[e.kind]?.name ?? e.kind}${mat} at ${e.x},${e.y}`;
+  return t('entity.at', { what: `${ENTITY_KINDS[e.kind]?.name ?? e.kind}${mat}`, x: e.x, y: e.y });
 }

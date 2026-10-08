@@ -137,4 +137,6 @@
  * @property {string[]} errors
  */
 
+/** @typedef {{ items: Record<string, string>, stations: Record<string, string>, extensions: Record<string, string>, talents: Record<string, string> }} NameTable */
+
 export {};
