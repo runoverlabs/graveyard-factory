@@ -3,6 +3,7 @@
 // station counts and material supply needed. Pure, no layout involved.
 
 import { RECIPES, STATIONS, RAW_MATERIALS, ITEM_BY_ID } from '../catalog.js';
+import { t } from '../i18n.js';
 
 /** @typedef {import('../types.js').Recipe} Recipe */
 /** @typedef {import('../types.js').Target} Target */
@@ -97,12 +98,12 @@ export function planProduction(targets, options = {}) {
   /** @param {string} item */
   const visit = (item) => {
     if (state.get(item) === 2) return;
-    if (state.get(item) === 1) { errors.push(`Recipe cycle through ${ITEM_BY_ID[item]?.name ?? item}`); return; }
+    if (state.get(item) === 1) { errors.push(t('production.cycle', { item: ITEM_BY_ID[item]?.name ?? item })); return; }
     state.set(item, 1);
     const recipe = RAW.has(item) ? null : chooseRecipe(item, options);
     recipeOf.set(item, recipe);
     if (!recipe && !RAW.has(item) && recipesProducing(item).length) {
-      errors.push(`No station level available for ${ITEM_BY_ID[item]?.name ?? item}`);
+      errors.push(t('production.noLevel', { item: ITEM_BY_ID[item]?.name ?? item }));
     }
     if (recipe) for (const ing of Object.keys(recipe.inputs)) visit(ing);
     state.set(item, 2);

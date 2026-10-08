@@ -62,111 +62,112 @@
   </svg>
   <header class="topbar">
     <h1 class="app-title">Graveyard Keeper 2 Factory Planner</h1>
-    <input id="layout-name" class="name" type="text" spellcheck="false" aria-label="Layout name">
+    <input id="layout-name" class="name" type="text" spellcheck="false" aria-label="Layout name" data-i18n-aria-label="topbar.layoutName">
     <div class="group">
-      <button data-action="clear" title="Remove everything placed on the floor (distribution stations stay)">Clear</button>
+      <button data-action="clear" title="Remove everything placed on the floor (distribution stations stay)" data-i18n-title="topbar.clearTitle" data-i18n="topbar.clear">Clear</button>
     </div>
     <div class="group">
-      <button data-action="import">Import JSON</button>
-      <button data-action="export">Export JSON</button>
-      <button data-action="share" title="Copy a link to this factory (the address bar always has it)">Copy link</button>
+      <button data-action="import" data-i18n="topbar.import">Import JSON</button>
+      <button data-action="export" data-i18n="topbar.export">Export JSON</button>
+      <button data-action="share" title="Copy a link to this factory (the address bar always has it)" data-i18n-title="topbar.shareTitle" data-i18n="topbar.share">Copy link</button>
     </div>
     <div class="group">
-      <button data-action="undo" title="Undo (Ctrl+Z)">Undo</button>
-      <button data-action="redo" title="Redo (Ctrl+Y)">Redo</button>
-      <button data-action="fit" title="Fit layout in view (0)">Fit</button>
+      <button data-action="undo" title="Undo (Ctrl+Z)" data-i18n-title="topbar.undoTitle" data-i18n="action.undo">Undo</button>
+      <button data-action="redo" title="Redo (Ctrl+Y)" data-i18n-title="topbar.redoTitle" data-i18n="action.redo">Redo</button>
+      <button data-action="fit" title="Fit layout in view (0)" data-i18n-title="topbar.fitTitle" data-i18n="topbar.fit">Fit</button>
     </div>
     <div class="group toggles">
-      <label><input type="checkbox" id="show-background" checked> Background</label>
-      <label><input type="checkbox" id="show-grid" checked> Grid</label>
-      <label><input type="checkbox" id="show-ports" checked> Ports</label>
-      <label><input type="checkbox" id="show-flow" checked> Flow</label>
-      <label><input type="checkbox" id="show-issues" checked> Issues</label>
+      <label><input type="checkbox" id="show-background" checked> <span data-i18n="toggle.background">Background</span></label>
+      <label><input type="checkbox" id="show-grid" checked> <span data-i18n="toggle.grid">Grid</span></label>
+      <label><input type="checkbox" id="show-ports" checked> <span data-i18n="toggle.ports">Ports</span></label>
+      <label><input type="checkbox" id="show-flow" checked> <span data-i18n="toggle.flow">Flow</span></label>
+      <label><input type="checkbox" id="show-issues" checked> <span data-i18n="toggle.issues">Issues</span></label>
     </div>
     <div class="group">
-      <button id="changelog-button" hidden title="What changed on this site, by day">What's new</button>
-      <a class="icon-link" id="bug-link" href="https://github.com/runoverlabs/graveyard-factory/issues/new?template=bug_report.md" target="_blank" rel="noopener" title="Report a bug on GitHub" aria-label="Report a bug on GitHub"><svg width="18" height="18"><use href="#icon-bug"/></svg></a>
-      <a class="icon-link" id="github-link" href="https://github.com/runoverlabs/graveyard-factory" target="_blank" rel="noopener" title="Source code on GitHub" aria-label="Source code on GitHub"><svg width="18" height="18"><use href="#icon-github"/></svg></a>
+      <select id="language" aria-label="Language" data-i18n-aria-label="topbar.language"></select>
+      <button id="changelog-button" hidden title="What changed on this site, by day" data-i18n-title="topbar.whatsNewTitle" data-i18n="topbar.whatsNew">What's new</button>
+      <a class="icon-link" id="bug-link" href="https://github.com/runoverlabs/graveyard-factory/issues/new?template=bug_report.md" target="_blank" rel="noopener" title="Report a bug on GitHub" aria-label="Report a bug on GitHub" data-i18n-title="link.bugTitle" data-i18n-aria-label="link.bugTitle"><svg width="18" height="18"><use href="#icon-bug"/></svg></a>
+      <a class="icon-link" id="github-link" href="https://github.com/runoverlabs/graveyard-factory" target="_blank" rel="noopener" title="Source code on GitHub" aria-label="Source code on GitHub" data-i18n-title="link.githubTitle" data-i18n-aria-label="link.githubTitle"><svg width="18" height="18"><use href="#icon-github"/></svg></a>
     </div>
   </header>
 
   <main class="main">
     <aside class="sidebar">
       <section>
-        <h2>Floor sections</h2>
+        <h2 data-i18n="sidebar.floorSections">Floor sections</h2>
         <div id="sections" class="sections"></div>
       </section>
       <section>
-        <h2>Terrain</h2>
+        <h2 data-i18n="sidebar.terrain">Terrain</h2>
         <div class="tools" id="terrain-tools"></div>
       </section>
       <section>
-        <h2>Place</h2>
+        <h2 data-i18n="sidebar.place">Place</h2>
         <div class="tools" id="entity-tools"></div>
       </section>
       <section id="tool-options"></section>
       <section id="inspector"></section>
       <section>
-        <h2>Issues <span id="issue-count" class="badge"></span></h2>
+        <h2><span data-i18n="sidebar.issues">Issues</span> <span id="issue-count" class="badge"></span></h2>
         <ul id="issues" class="issues"></ul>
       </section>
       <section>
-        <h2>Stats</h2>
+        <h2 data-i18n="sidebar.stats">Stats</h2>
         <div id="stats" class="stats"></div>
       </section>
       <section class="about">
-        <h2>About</h2>
-        <p>A free, unofficial <strong>factory planner for <em>Graveyard Keeper 2</em></strong>. Draw your conveyor factory on the real factory floor, or give the planner target outputs per minute (Supply: Iron, Building Kit I, Furniture I…) and it works out how many smithies, assembly benches and kitchens you need, places them and routes the belts.</p>
+        <h2 data-i18n="about.title">About</h2>
+        <p data-i18n-html="about.intro">A free, unofficial <strong>factory planner for <em>Graveyard Keeper 2</em></strong>. Draw your conveyor factory on the real factory floor, or give the planner target outputs per minute (Supply: Iron, Building Kit I, Furniture I…) and it works out how many smithies, assembly benches and kitchens you need, places them and routes the belts.</p>
         <ul>
-          <li>All 67 factory recipes, with craft times, worker talent levels and required extensions (Bellows, Hammer, Press, Auto-hammer, Drill press, Lathe…)</li>
-          <li>The real factory floor from the game data, with toggles for the six sections you repair in the game; the planner uses only repaired floor</li>
-          <li>Conveyor belts, splitters, underground conveyors, chests with side filters, distribution and supply stations, and the beer and wine cellar</li>
-          <li>Station layouts and extension slots as in the game; validation of blocked ports and missing extensions</li>
-          <li>Factory power: 1 per station and belt, 2 per underground conveyor (chests and porters use none), against the factory's 5 zombie carousels (20 zombies × 7 power, 10 with Belt Master: 140 or 200 at most); the planner keeps power under the maximum</li>
-          <li>Saves in your browser; import and export layouts as JSON, or share a link: the address always holds the factory</li>
+          <li data-i18n-html="about.recipes">All 67 factory recipes, with craft times, worker talent levels and required extensions (Bellows, Hammer, Press, Auto-hammer, Drill press, Lathe…)</li>
+          <li data-i18n-html="about.floor">The real factory floor from the game data, with toggles for the six sections you repair in the game; the planner uses only repaired floor</li>
+          <li data-i18n-html="about.pieces">Conveyor belts, splitters, underground conveyors, chests with side filters, distribution and supply stations, and the beer and wine cellar</li>
+          <li data-i18n-html="about.layouts">Station layouts and extension slots as in the game; validation of blocked ports and missing extensions</li>
+          <li data-i18n-html="about.power">Factory power: 1 per station and belt, 2 per underground conveyor (chests and porters use none), against the factory's 5 zombie carousels (20 zombies × 7 power, 10 with Belt Master: 140 or 200 at most); the planner keeps power under the maximum</li>
+          <li data-i18n-html="about.saves">Saves in your browser; import and export layouts as JSON, or share a link: the address always holds the factory</li>
         </ul>
-        <p class="hint">Unofficial fan tool, not affiliated with Lazy Bear Games or tinyBuild; game art and data © their owners. <a href="https://github.com/runoverlabs/graveyard-factory">Source and docs on GitHub</a>.</p>
+        <p class="hint" data-i18n-html="about.disclaimer">Unofficial fan tool, not affiliated with Lazy Bear Games or tinyBuild; game art and data © their owners. <a href="https://github.com/runoverlabs/graveyard-factory">Source and docs on GitHub</a>.</p>
       </section>
       <section class="help">
-        <h2>Controls</h2>
+        <h2 data-i18n="controls.title">Controls</h2>
         <ul>
-          <li><kbd>Drag</kbd> paint · <kbd>Shift</kbd>+drag rectangle</li>
-          <li><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd> rotate</li>
-          <li><kbd>Right-drag</kbd> erase entities</li>
-          <li><kbd>Wheel</kbd> zoom · <kbd>Middle</kbd>/<kbd>Space</kbd>+drag pan</li>
-          <li><kbd>Del</kbd> delete selected · <kbd>Esc</kbd> select tool</li>
-          <li>Belts follow drag direction</li>
+          <li data-i18n-html="controls.paint"><kbd>Drag</kbd> paint · <kbd>Shift</kbd>+drag rectangle</li>
+          <li data-i18n-html="controls.rotate"><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd> rotate</li>
+          <li data-i18n-html="controls.erase"><kbd>Right-drag</kbd> erase entities</li>
+          <li data-i18n-html="controls.zoomPan"><kbd>Wheel</kbd> zoom · <kbd>Middle</kbd>/<kbd>Space</kbd>+drag pan</li>
+          <li data-i18n-html="controls.delete"><kbd>Del</kbd> delete selected · <kbd>Esc</kbd> select tool</li>
+          <li data-i18n="controls.belts">Belts follow drag direction</li>
         </ul>
       </section>
     </aside>
     <div class="canvas-wrap" id="canvas-wrap">
       <canvas id="canvas"></canvas>
-      <div class="preview-banner">Planner preview — Apply or Discard in the Planner panel</div>
+      <div class="preview-banner" data-i18n="banner.preview">Planner preview — Apply or Discard in the Planner panel</div>
     </div>
     <aside class="sidebar planner-panel" id="planner"></aside>
   </main>
 
   <dialog id="welcome" class="welcome" aria-labelledby="welcome-title">
     <img src="assets/icons/skull-dotmatrix.svg" alt="" width="96" height="96">
-    <h2 id="welcome-title">Welcome to the Graveyard Keeper 2 Factory Planner</h2>
-    <p>Draw your conveyor factory on the real floor, or give the planner the items you want per minute and let it place the stations and lay the belts. Everything saves in your browser.</p>
-    <p>This is an unofficial fan tool and still young. If something looks wrong or breaks a game rule, please tell us on GitHub.</p>
+    <h2 id="welcome-title" data-i18n="welcome.title">Welcome to the Graveyard Keeper 2 Factory Planner</h2>
+    <p data-i18n="welcome.intro">Draw your conveyor factory on the real floor, or give the planner the items you want per minute and let it place the stations and lay the belts. Everything saves in your browser.</p>
+    <p data-i18n="welcome.note">This is an unofficial fan tool and still young. If something looks wrong or breaks a game rule, please tell us on GitHub.</p>
     <div class="welcome-links">
-      <a class="button-link" href="https://github.com/runoverlabs/graveyard-factory/issues/new?template=bug_report.md" target="_blank" rel="noopener"><svg width="16" height="16"><use href="#icon-bug"/></svg> Report a bug</a>
-      <a class="button-link" href="https://github.com/runoverlabs/graveyard-factory" target="_blank" rel="noopener"><svg width="16" height="16"><use href="#icon-github"/></svg> GitHub</a>
+      <a class="button-link" href="https://github.com/runoverlabs/graveyard-factory/issues/new?template=bug_report.md" target="_blank" rel="noopener"><svg width="16" height="16"><use href="#icon-bug"/></svg> <span data-i18n="link.reportBug">Report a bug</span></a>
+      <a class="button-link" href="https://github.com/runoverlabs/graveyard-factory" target="_blank" rel="noopener"><svg width="16" height="16"><use href="#icon-github"/></svg> <span data-i18n="link.github">GitHub</span></a>
     </div>
-    <button class="dialog-close primary">Start planning</button>
+    <button class="dialog-close primary" data-i18n="welcome.start">Start planning</button>
   </dialog>
 
   <dialog id="changelog" class="changelog" aria-labelledby="changelog-title">
-    <h2 id="changelog-title">What's new</h2>
+    <h2 id="changelog-title" data-i18n="changelog.title">What's new</h2>
     <div class="changelog-body"></div>
     <div class="dialog-actions">
       <span class="dialog-links">
-        <a href="https://github.com/runoverlabs/graveyard-factory" target="_blank" rel="noopener"><svg width="14" height="14"><use href="#icon-github"/></svg> GitHub</a>
-        <a href="https://github.com/runoverlabs/graveyard-factory/issues/new?template=bug_report.md" target="_blank" rel="noopener"><svg width="14" height="14"><use href="#icon-bug"/></svg> Report a bug</a>
+        <a href="https://github.com/runoverlabs/graveyard-factory" target="_blank" rel="noopener"><svg width="14" height="14"><use href="#icon-github"/></svg> <span data-i18n="link.github">GitHub</span></a>
+        <a href="https://github.com/runoverlabs/graveyard-factory/issues/new?template=bug_report.md" target="_blank" rel="noopener"><svg width="14" height="14"><use href="#icon-bug"/></svg> <span data-i18n="link.reportBug">Report a bug</span></a>
       </span>
-      <button class="dialog-close primary">Close</button>
+      <button class="dialog-close primary" data-i18n="action.close">Close</button>
     </div>
   </dialog>
 
@@ -178,24 +179,24 @@
   <dialog id="import-dialog" class="dialog" aria-labelledby="import-dialog-title">
     <div class="dialog-card">
       <header class="dialog-header">
-        <h2 id="import-dialog-title">Import layout JSON</h2>
-        <button type="button" class="dialog-x" id="import-close-btn" aria-label="Close">&times;</button>
+        <h2 id="import-dialog-title" data-i18n="import.title">Import layout JSON</h2>
+        <button type="button" class="dialog-x" id="import-close-btn" aria-label="Close" data-i18n-aria-label="action.close">&times;</button>
       </header>
       <div class="dialog-body">
-        <p class="dialog-desc">Upload a layout file or paste JSON below.</p>
+        <p class="dialog-desc" data-i18n="import.desc">Upload a layout file or paste JSON below.</p>
         <div class="dialog-file-row">
           <label class="file-picker-btn">
-            Choose file…
+            <span data-i18n="import.chooseFile">Choose file…</span>
             <input id="import-dialog-file" type="file" accept=".json,application/json">
           </label>
-          <span id="import-dialog-filename" class="file-name-hint">No file chosen</span>
+          <span id="import-dialog-filename" class="file-name-hint" data-i18n="import.noFile">No file chosen</span>
         </div>
-        <textarea id="import-json-text" class="import-textarea" rows="11" spellcheck="false" placeholder="Paste JSON here..." aria-label="Layout JSON text"></textarea>
+        <textarea id="import-json-text" class="import-textarea" rows="11" spellcheck="false" placeholder="Paste JSON here..." aria-label="Layout JSON text" data-i18n-placeholder="import.placeholder" data-i18n-aria-label="import.textLabel"></textarea>
         <div id="import-error" class="dialog-error" role="alert" hidden></div>
       </div>
       <footer class="dialog-footer">
-        <button type="button" id="import-cancel-btn">Cancel</button>
-        <button type="button" id="import-submit-btn" class="primary">Import</button>
+        <button type="button" id="import-cancel-btn" data-i18n="action.cancel">Cancel</button>
+        <button type="button" id="import-submit-btn" class="primary" data-i18n="import.submit">Import</button>
       </footer>
     </div>
   </dialog>

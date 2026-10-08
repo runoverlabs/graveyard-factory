@@ -4,6 +4,7 @@
 // The newest commit hash the visitor has dismissed lives in localStorage.
 
 import { groupByDay, unseenEntries } from './changelog.js';
+import { t } from './i18n.js';
 
 /** @typedef {import('./changelog.js').ChangeEntry} ChangeEntry */
 
@@ -71,13 +72,13 @@ export async function initChangelog(doc, welcomed = false) {
   dialog.addEventListener('click', (ev) => { if (ev.target === dialog) dialog.close(); });
   dialog.querySelector('.dialog-close').addEventListener('click', () => dialog.close());
   button.addEventListener('click', () => {
-    render(dialog, entries, 'Change log');
+    render(dialog, entries, t('changelog.fullTitle'));
     dialog.showModal();
   });
 
   if (welcomed) { writeSeen(latest); return; }
   const fresh = unseenEntries(entries, readSeen());
   if (!fresh.length) return;
-  render(dialog, fresh, "What's new");
+  render(dialog, fresh, t('changelog.title'));
   dialog.showModal();
 }

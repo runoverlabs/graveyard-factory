@@ -76,6 +76,7 @@ function drawItem(ctx, id, cx, cy, size) {
   ctx.restore();
 }
 import { FLOOR, REPAIRABLE_SECTIONS, sectionFloor } from './model.js';
+import { t } from './i18n.js';
 
 const COLORS = {
   void: '#15171c',
@@ -293,7 +294,7 @@ function drawSections(ctx, layout, cell, highlight) {
     for (const s of FLOOR_SECTIONS) {
       if (!s.repair || layout.repaired.includes(s.id)) continue;
       const [x0, y0, x1, y1] = s.rects[0];
-      ctx.fillText(`${s.id} · not repaired`, (x0 + x1) / 2 * cell, (y0 + y1) / 2 * cell);
+      ctx.fillText(t('render.notRepaired', { id: s.id }), (x0 + x1) / 2 * cell, (y0 + y1) / 2 * cell);
     }
   }
   const hl = FLOOR_SECTIONS.find((s) => s.id === highlight);
@@ -814,7 +815,7 @@ function drawStationLabel(ctx, e, px, py, size, cell) {
   const def = STATIONS[e.type];
   const recipe = RECIPE_BY_ID[e.recipe];
   const productId = recipe && Object.keys(recipe.outputs)[0];
-  const product = recipe ? ITEM_BY_ID[productId]?.name ?? recipe.id : 'no recipe';
+  const product = recipe ? ITEM_BY_ID[productId]?.name ?? recipe.id : t('render.noRecipe');
   const hgt = cell * 0.5;
   ctx.font = `600 ${Math.max(8, cell * 0.3)}px system-ui, sans-serif`;
   const text = ellipsize(ctx, `${ROMAN[e.level] ?? e.level} · ${product}`, size - cell * 0.3);

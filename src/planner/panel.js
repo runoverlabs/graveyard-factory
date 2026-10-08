@@ -5,6 +5,7 @@
 import { STATIONS, ROMAN, ITEM_BY_ID, RECIPES, ITEMS, POWER_ICON, ZOMBIE_POWER, CELLAR_ITEMS, GARDEN_ITEMS } from '../catalog.js';
 import { planProduction, recipesProducing } from './production.js';
 import { applyResult } from './planner.js';
+import { t, getLanguage } from '../i18n.js';
 
 /** @typedef {import('../types.js').Item} Item */
 /** @typedef {import('../types.js').StationType} StationType */
@@ -84,7 +85,7 @@ export class PlannerPanel {
     this.running = true;
     this.worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
     this.worker.onmessage = (ev) => this.onMessage(ev.data);
-    this.worker.onerror = (ev) => { this.running = false; this.editor.status(`Planner failed: ${ev.message}`, true); this.render(); };
+    this.worker.onerror = (ev) => { this.running = false; this.editor.status(t('planner.failed', { message: ev.message }), true); this.render(); };
     this.worker.postMessage(/** @type {WorkerStart} */ ({
       type: 'start',
       layout: this.baseLayout().toJSON(),
@@ -130,7 +131,7 @@ export class PlannerPanel {
       this.editor.layout.clearAutoMaterials();
       applyResult(this.editor.layout, this.result);
     });
-    this.editor.status(`Applied planner layout (${entities.length} pieces). Undo to go back.`);
+    this.editor.status(t('planner.applied', { n: entities.length }));
     this.result = null;
     this.progress = null;
     this.render();
@@ -151,32 +152,32 @@ export class PlannerPanel {
     const prod = this.production();
     const el = this.el;
     el.replaceChildren();
-    el.append(h('h2', {}, 'Planner'));
+    el.append(h('h2', {}, t('planner.title')));
 
     // Targets.
     const list = h('div', { class: 'targets' });
-    s.targets.forEach((t, i) => {
-      const sel = itemSelect(t.item, t.recipe, (item, recipe) => {
-        s.targets[i] = { item, rate: t.rate, ...(recipe ? { recipe } : {}) };
+    s.targets.forEach((target, i) => {
+      const sel = itemSelect(target.item, target.recipe, (item, recipe) => {
+        s.targets[i] = { item, rate: target.rate, ...(recipe ? { recipe } : {}) };
         this.update({});
       });
-      const rate = h('input', { type: 'number', min: 0, step: 0.5, value: t.rate, title: 'Items per minute' });
-      rate.addEventListener('change', () => { s.targets[i] = { ...t, rate: Math.max(0, parseFloat(rate.value) || 0) }; this.update({}); });
-      const del = h('button', { type: 'button', title: 'Remove' }, '×');
+      const rate = h('input', { type: 'number', min: 0, step: 0.5, value: target.rate, title: t('planner.rateTitle') });
+      rate.addEventListener('change', () => { s.targets[i] = { ...target, rate: Math.max(0, parseFloat(rate.value) || 0) }; this.update({}); });
+      const del = h('button', { type: 'button', title: t('action.remove') }, '×');
       del.addEventListener('click', () => { s.targets.splice(i, 1); this.update({}); });
-      list.append(h('div', { class: 'target' }, sel, rate, h('span', { class: 'unit' }, '/min'), del));
+      list.append(h('div', { class: 'target' }, sel, rate, h('span', { class: 'unit' }, t('planner.perMinute', { n: '' })), del));
     });
-    const add = h('button', { type: 'button' }, '+ Add target');
+    const add = h('button', { type: 'button' }, t('planner.addTarget'));
     add.addEventListener('click', () => { s.targets.push({ item: TARGET_ITEMS[0].id, rate: 1 }); this.update({}); });
-    el.append(h('h3', {}, 'Final outputs'), list, add);
-    if (!s.targets.length) el.append(h('p', { class: 'hint' }, 'Add the items you want per minute. Every recipe runs at 1 craft per minute for now.'));
+    el.append(h('h3', {}, t('planner.finalOutputs')), list, add);
+    if (!s.targets.length) el.append(h('p', { class: 'hint' }, t('planner.targetsHint')));
 
     // Options.
     const time = selectEl(TIME_CHOICES.map((t) => [t, `${t} s`]), s.timeSec, (v) => this.update({ timeSec: +v }));
-    el.append(h('h3', {}, 'Options'), field('Search time', time));
+    el.append(h('h3', {}, t('planner.options')), field(t('planner.searchTime'), time));
     for (const [type, def] of /** @type {[StationType, StationDef][]} */ (Object.entries(STATIONS))) {
       const max = s.maxLevel[type] ?? Math.max(...def.levels);
-      el.append(field(`${def.name} up to`, selectEl(def.levels.map((l) => [l, ROMAN[l]]), max,
+      el.append(field(t('planner.upTo', { name: def.name }), selectEl(def.levels.map((l) => [l, ROMAN[l]]), max,
         (v) => this.update({ maxLevel: { ...s.maxLevel, [type]: +v } }))));
     }
     // Recipe choice where the plan uses an item with alternatives.
@@ -195,15 +196,15 @@ export class PlannerPanel {
         h('td', { class: 'num' }, `${r.stations}×`),
         h('td', {}, `${STATIONS[r.station].name} ${ROMAN[r.level] ?? '?'}`),
         h('td', {}, itemLabel(r.item)),
-        h('td', { class: 'num' }, `${fmt(r.output)}/min`)));
+        h('td', { class: 'num' }, t('planner.perMinute', { n: fmt(r.output) }))));
       const sup = Object.entries(prod.supply).map(([item, v]) => h('tr', {},
         h('td', { class: 'num' }, ''),
-        h('td', {}, v.source === 'distributor' ? 'Distributor' : 'Chest'),
+        h('td', {}, v.source === 'distributor' ? t('planner.distributor') : t('planner.chest')),
         h('td', {}, itemLabel(item)),
-        h('td', { class: 'num' }, `${fmt(v.rate)}/min`)));
-      el.append(h('h3', {}, `Production · ${prod.stations} stations`),
+        h('td', { class: 'num' }, t('planner.perMinute', { n: fmt(v.rate) }))));
+      el.append(h('h3', {}, t('planner.production', { n: prod.stations })),
         h('table', { class: 'prod' }, h('tbody', {}, ...rows)),
-        h('h3', {}, 'Supply'),
+        h('h3', {}, t('planner.supply')),
         h('table', { class: 'prod' }, h('tbody', {}, ...sup)));
     }
     for (const e of prod.errors) el.append(h('p', { class: 'error' }, e));
@@ -211,24 +212,24 @@ export class PlannerPanel {
     // Run.
     const actions = h('div', { class: 'row-actions' });
     if (this.running) {
-      const stop = h('button', { type: 'button' }, 'Stop');
+      const stop = h('button', { type: 'button' }, t('planner.stop'));
       stop.addEventListener('click', () => this.stop());
       actions.append(stop);
     } else {
-      const go = h('button', { type: 'button', class: this.result ? '' : 'primary' }, this.result ? 'New search' : 'Generate layout');
+      const go = h('button', { type: 'button', class: this.result ? '' : 'primary' }, this.result ? t('planner.newSearch') : t('planner.generate'));
       go.disabled = !prod.stations || prod.errors.length > 0;
       go.addEventListener('click', () => this.start());
       actions.append(go);
       if (this.result) {
-        const more = h('button', { type: 'button', class: 'primary', title: 'Keep improving this layout' }, 'Continue');
+        const more = h('button', { type: 'button', class: 'primary', title: t('planner.continueTitle') }, t('planner.continue'));
         more.addEventListener('click', () => this.start(true));
         actions.append(more);
       }
     }
     if (this.result) {
-      const apply = h('button', { type: 'button' }, 'Apply');
+      const apply = h('button', { type: 'button' }, t('planner.apply'));
       apply.addEventListener('click', () => this.apply());
-      const discard = h('button', { type: 'button' }, 'Discard');
+      const discard = h('button', { type: 'button' }, t('planner.discard'));
       discard.addEventListener('click', () => this.discard());
       actions.append(apply, discard);
     }
@@ -245,18 +246,21 @@ export class PlannerPanel {
     if (this.progress) {
       const p = this.progress;
       const r = this.result;
-      const lines = [`${this.running ? 'Searching' : 'Done'} · ${(p.elapsed / 1000).toFixed(1)} s · ${p.iterations} layouts tried`];
+      const lines = [t('planner.progress', { state: t(this.running ? 'planner.searching' : 'planner.done'), seconds: (p.elapsed / 1000).toFixed(1), n: p.iterations })];
       if (r) {
         const st = r.stats;
-        lines.push(`Best: ${st.stations} stations, ${st.belts} belts, ${st.undergrounds} undergrounds, ${st.splitters} splitters, ${st.chests} chests${st.supplyStations ? `, ${st.supplyStations} supply stations` : ''}`);
-        lines.push(r.failures.length ? `${r.failures.length} connection(s) could not be routed` : 'All connections routed');
+        const parts = [t('count.stations', { n: st.stations }), t('count.belts', { n: st.belts }), t('count.undergrounds', { n: st.undergrounds }),
+          t('count.splitters', { n: st.splitters }), t('count.chests', { n: st.chests })];
+        if (st.supplyStations) parts.push(t('count.supplyStations', { n: st.supplyStations }));
+        lines.push(t('planner.best', { list: parts.join(t('list.separator')) }));
+        lines.push(r.failures.length ? t('planner.unrouted', { n: r.failures.length }) : t('planner.allRouted'));
       }
       el.append(...lines.map((t, i) => h('p', { class: i === 2 && r?.failures.length ? 'error' : 'hint' }, t)));
       if (r) {
         const st = r.stats;
-        const over = st.over ? ` · ${st.over} over the maximum` : '';
-        el.append(h('p', { class: over ? 'error power' : 'hint power', title: `Factory power: 1 per station and belt, 2 per underground conveyor; chests and porters use none; the maximum comes from the factory's ${ZOMBIE_POWER.carousels} carousels and the Belt Master setting in Stats` },
-          h('img', { src: POWER_ICON, alt: '' }), `Power: ${st.power} / ${st.available} · ${st.zombies} zombies${over}`));
+        const over = st.over ? ` · ${t('planner.overMax', { n: st.over })}` : '';
+        el.append(h('p', { class: over ? 'error power' : 'hint power', title: t('planner.powerTitle', { carousels: ZOMBIE_POWER.carousels }) },
+          h('img', { src: POWER_ICON, alt: '' }), `${t('stats.power')}: ${st.power} / ${st.available} · ${t('count.zombies', { n: st.zombies })}${over}`));
       }
       if (r?.failures.length) {
         el.append(h('ul', { class: 'failures' }, ...r.failures.slice(0, 8).map((f) => h('li', {}, describeFailure(f)))));
@@ -267,9 +271,9 @@ export class PlannerPanel {
 
 /** @param {Failure} f */
 function describeFailure(f) {
-  if (f.reason === 'no room') return `No room for station #${f.station + 1}`;
+  if (f.reason === 'no room') return t('failure.noRoom', { n: f.station + 1 });
   const name = ITEM_BY_ID[f.item]?.name ?? f.item;
-  return `${name}: ${f.from.startsWith('dist:') ? 'distributor' : f.from === 'chest' ? 'supply chest' : 'station'} → ${f.to.startsWith('final:') ? 'output chest' : 'station'}`;
+  return `${name}: ${t(f.from.startsWith('dist:') ? 'failure.distributor' : f.from === 'chest' ? 'failure.supplyChest' : 'failure.station')} → ${t(f.to.startsWith('final:') ? 'failure.outputChest' : 'failure.station')}`;
 }
 
 /** @param {string} id */
@@ -301,18 +305,18 @@ const cropName = (r) => {
  * @param {(item: string, recipe?: string) => void} onChange
  */
 function itemSelect(value, recipe, onChange) {
-  const byName = (/** @type {Item} */ a, /** @type {Item} */ z) => a.name.localeCompare(z.name);
+  const byName = (/** @type {Item} */ a, /** @type {Item} */ z) => a.name.localeCompare(z.name, getLanguage());
   const supplies = TARGET_ITEMS.filter((i) => i.id.startsWith('supply_')).sort(byName);
   const others = TARGET_ITEMS.filter((i) => !i.id.startsWith('supply_')).sort(byName);
   const s = h('select');
-  for (const [label, items] of /** @type {[string, Item[]][]} */ ([['Town supplies', supplies], ['Products', others]])) {
+  for (const [label, items] of /** @type {[string, Item[]][]} */ ([[t('group.townSupplies'), supplies], [t('group.products'), others]])) {
     const g = h('optgroup', { label });
     for (const i of items) {
       const variants = CROP_VARIANTS.find((v) => v.item === i)?.recipes;
       if (!variants) { g.append(h('option', { value: i.id }, i.name)); continue; }
-      g.append(h('option', { value: i.id }, `${i.name} (any crop)`));
-      for (const r of [...variants].sort((a, z) => cropName(a).localeCompare(cropName(z)))) {
-        g.append(h('option', { value: `${i.id}|${r.id}` }, `${i.name} (${cropName(r)})`));
+      g.append(h('option', { value: i.id }, t('target.anyCrop', { name: i.name })));
+      for (const r of [...variants].sort((a, z) => cropName(a).localeCompare(cropName(z), getLanguage()))) {
+        g.append(h('option', { value: `${i.id}|${r.id}` }, t('target.crop', { name: i.name, crop: cropName(r) })));
       }
     }
     s.append(g);
