@@ -8,8 +8,9 @@
 // Paths of the same item form a network. Every network cell tracks which
 // sources feed it (`up`) and which consumers it leads to (`down`), so a new
 // connection can branch off a line coming from its source (splitter at a turn,
-// or a chest hub on a straight) and merge into a line that only leads to its
-// consumer.
+// a chest hub in place of a belt, or another side of a chest already in the
+// line or of an output chest it fills) and merge into a line that only leads
+// to its consumer.
 
 import { UNDERGROUND_LENGTH, UNDERGROUND_GAP } from '../catalog.js';
 
@@ -101,9 +102,12 @@ export const COST = {
   chest: 3,
   // A chest in the line, in place of a belt: chests use no power.
   passChest: 0.5,
+  // Branching off a chest already in the line: just another filtered side.
+  passHub: 1,
 };
 
 export const MAX_STATIONS_PER_BELT = 3;
+export const NO_CHEST_PORT = 1, NO_CHEST_INPUT = 2;
 const FREE = 0, BLOCKED = 1, BELT = 2, CHEST = 3;
 
 export class RouteGrid {
@@ -121,7 +125,10 @@ export class RouteGrid {
     this.gap = new Int8Array(n).fill(-1);      // rot of the underground whose gap is here
     this.body = new Int8Array(n).fill(-1);     // rot of the underground with a belt cell here
     this.reserved = new Int32Array(n).fill(-1); // port access cell, owner token
-    this.noChest = new Uint8Array(n);           // a station's port access cell (used or not): a chest there would feed it
+    // A port's access cell (used or not): NO_CHEST_PORT, plus NO_CHEST_INPUT for
+    // a station input's. No chest in the line goes on either; no chest at all on
+    // a station input's, since chests can't feed stations (Layout.validate).
+    this.noChest = new Uint8Array(n);
     // In front of a distributor: the direction back into it. Only a belt or an
     // underground's belt cell may go there, not pointing back
     // (DISTRIBUTOR_FRONT_KINDS); the planner only puts an underground's entry
@@ -219,7 +226,7 @@ export class RouteGrid {
    * @param {boolean} [filtered]
    */
   chestOk(k, d, allow, filtered = false) {
-    if (k < 0 || !this.floor[k] || this.occ[k] !== FREE || this.distFront[k] !== -1) return false;
+    if (k < 0 || !this.floor[k] || this.occ[k] !== FREE || this.distFront[k] !== -1 || this.noChest[k] & NO_CHEST_INPUT) return false;
     if (this.reserved[k] !== -1 && !allow.has(k)) return false;
     // An unfiltered chest pushes into every neighbouring belt (or underground
     // belt cell) that doesn't point into it, so none may sit next to it except
@@ -343,10 +350,12 @@ export class RouteGrid {
       if (i > 0 && i !== UNDERGROUND_GAP && this.distFront[c] !== -1) return false; // only its entry and its gap go in front of a distributor
       if (i === UNDERGROUND_GAP) {
         if (this.gap[c] !== -1 || this.reserved[c] !== -1) return false;
-        // The gap can pass under a crossing belt or a chest. Undergrounds may
-        // also cross each other (UNDERGROUND_GAP_KINDS), but the planner doesn't
-        // build that: over 10 seeds it left more connections unrouted.
+        // The gap can pass under a crossing belt, a chest, or a crossing
+        // underground's belt cell (UNDERGROUND_GAP_KINDS).
+        if (this.body[c] !== -1 && (this.body[c] & 1) !== (d & 1)) continue;
         if (this.occ[c] === BELT ? (this.rot[c] & 1) === (d & 1) : this.occ[c] !== FREE && this.occ[c] !== CHEST) return false;
+      } else if (i > 0 && this.gap[c] !== -1 && (this.gap[c] & 1) !== (d & 1) && this.occ[c] === FREE && this.reserved[c] === -1 && !(this.chestFeeds[c] & (1 << d))) {
+        continue; // a belt cell over another underground's gap, crossing it
       } else if (this.occ[c] !== FREE || this.gap[c] !== -1
         || (this.reserved[c] !== -1 && !(i === 0 && allow.has(c)))) {
         return false;
@@ -616,6 +625,17 @@ export class RouteGrid {
   branchStarts(item, src) {
     /** @type {RouteStart[]} */
     const out = [];
+    // Leave a chest hub at k from each free side other than the ones items come in and go out on.
+    /** @param {number} k @param {number} din @param {number} rot @param {number} cost */
+    const hubStarts = (k, din, rot, cost) => {
+      for (let side = 0; side < 4; side++) {
+        if (side === rev(din) || side === rot) continue;
+        const s = this.step(k, side);
+        if (s >= 0 && this.occ[s] === FREE && this.reserved[s] === -1) {
+          out.push({ k: s, d: side, cost, straight: true, origin: { type: 'hub', k } });
+        }
+      }
+    };
     for (const nd of this.net.values()) {
       if (nd.item !== item || !nd.up.has(src)) continue;
       // A belt in front of a distributor stays a belt (no splitter or hub there).
@@ -624,14 +644,23 @@ export class RouteGrid {
           // Splitter at a turn: one side keeps the line, the other starts the branch.
           const side = (nd.din + 1) % 4 === nd.rot ? (nd.din + 3) % 4 : (nd.din + 1) % 4;
           out.push({ k: this.step(nd.k, side), d: side, cost: COST.splitter, origin: { type: 'splitter', k: nd.k } });
-        } else if (this.reserved[nd.k] === -1 && nd.next.length === 1 && nd.next[0].kind === 'belt' && nd.next[0].rot === nd.rot) {
-          // Chest hub on a straight: the line continues out of the front, the
-          // branch leaves from a side (the hub is filtered to just those two).
-          for (const side of [(nd.rot + 1) % 4, (nd.rot + 3) % 4]) {
-            const s = this.step(nd.k, side);
-            if (s >= 0 && this.occ[s] === FREE && this.reserved[s] === -1) {
-              out.push({ k: s, d: side, cost: COST.hub, straight: true, origin: { type: 'hub', k: nd.k } });
-            }
+        }
+        // Or a chest hub, at a turn or on a straight: the line carries on out of the side it
+        // already left by (a chest only outputs onto a belt, so the next piece must be one,
+        // or an underground's entry), the branch leaves from another side. Never against a
+        // station input: chests can't feed stations.
+        const next = nd.next.length === 1 ? nd.next[0] : null;
+        const feedsBelt = next?.kind === 'belt' || (next?.kind === 'underground' && next.rot === nd.rot);
+        if (this.reserved[nd.k] === -1 && !(this.noChest[nd.k] & NO_CHEST_INPUT) && feedsBelt) hubStarts(nd.k, nd.din, nd.rot, COST.hub);
+      } else if (nd.kind === 'pass' && nd.prev.length === 1) {
+        // A chest in the line: filter another side to the item and it's a hub.
+        hubStarts(nd.k, nd.din, nd.rot, COST.passHub);
+      } else if (nd.kind === 'chest' && nd.prev.length) {
+        // An output chest the source already fills: a belt leaving it takes items out too.
+        for (let side = 0; side < 4; side++) {
+          const s = this.step(nd.k, side);
+          if (s >= 0 && this.occ[s] === FREE && this.reserved[s] === -1) {
+            out.push({ k: s, d: side, cost: COST.passHub, straight: true, origin: { type: 'existingHub', k: nd.k } });
           }
         }
       } else if (nd.kind === 'hub') {

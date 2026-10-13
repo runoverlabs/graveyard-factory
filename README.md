@@ -34,6 +34,7 @@ cd graveyard-factory
 npm start         # python3 -m http.server 8000, then open http://localhost:8000
 npm test          # unit tests for the model, game data and planner (Node 22+)
 npm run typecheck # JSDoc types, checked by TypeScript (fetched by npx; not a dependency)
+npm run bench     # planner benchmark: fixed plans over 10 seeds, for planner changes
 ```
 
 Both `npm test` and `npm run typecheck` must pass before you send a change.

@@ -1,12 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { Layout, VOID, REPAIRABLE_SECTIONS } from '../src/model.js';
+import { Layout, VOID, REPAIRABLE_SECTIONS, FORMAT_VERSION } from '../src/model.js';
 import { factoryFloor } from '../src/floor.js';
-import { N, E, S, RECIPES, CELLAR_ITEMS, GARDEN_ITEMS, supplyZoneDistance } from '../src/catalog.js';
+import { N, E, S, RECIPES, CELLAR_ITEMS, GARDEN_ITEMS, supplyZoneDistance, stationVariants } from '../src/catalog.js';
 import { planProduction, chooseRecipe } from '../src/planner/production.js';
-import { RouteGrid } from '../src/planner/router.js';
+import { RouteGrid, NO_CHEST_PORT, NO_CHEST_INPUT } from '../src/planner/router.js';
 import { Planner, stationInstances, applyResult } from '../src/planner/planner.js';
+import { GeneticPlanner } from '../src/planner/genetic.js';
+import { plannerSettings, searchesFor } from '../src/planner/panel.js';
 
 const byRecipe = (plan) => Object.fromEntries(plan.recipes.map((r) => [r.recipe, r]));
 // The station-count and planner tests run every recipe at 1 craft per minute so
@@ -89,6 +91,19 @@ test('router: crosses a belt line with an underground conveyor', () => {
   assert.equal(g.xy(ug.k)[0] + 2, 5, 'its gap sits on the belt line');
 });
 
+test('router: undergrounds cross each other', () => {
+  const g = grid(10, 10);
+  // An underground east from (2,5): belt cells (2..3,5) and (5..6,5), its gap at (4,5).
+  g.apply({ start: { k: g.key(2, 5), d: E, cost: 0, origin: { type: 'port' } }, goal: { k: g.key(7, 5), d: E, type: 'port' }, steps: [{ k: g.key(2, 5), din: E, act: 4 + E }] }, 'coal', 'dist:coal', 's0i0');
+  // One going north may put its gap under a belt cell of it, or a belt cell over its gap.
+  assert.equal(g._undergroundOk(g.key(3, 7), N, new Set()), true);  // gap at (3,5)
+  assert.equal(g._undergroundOk(g.key(4, 6), N, new Set()), true);  // belt cell (4,5) over its gap
+  assert.equal(g._undergroundOk(g.key(4, 7), N, new Set()), false); // gap on its gap
+  assert.equal(g._undergroundOk(g.key(5, 8), N, new Set()), false); // belt cell on a belt cell
+  // Not along it.
+  assert.equal(g._undergroundOk(g.key(1, 5), E, new Set()), false);
+});
+
 test('router: underground belt cells work like belts next to chests', () => {
   const h = grid(8, 8);
   // A neighbouring chest would feed them, so a route's underground avoids it.
@@ -134,6 +149,56 @@ test('router: chests feed neighbouring belts on the sides they output from', () 
   assert.equal(h.beltOk(h.key(2, 1), E, new Set()), false);
 });
 
+test('router: no chest against a station input, used or not', () => {
+  const g = grid(6, 6);
+  const k = g.key(2, 2);
+  g.noChest[k] = NO_CHEST_PORT; // an output's access cell: an output chest may go right there
+  assert.equal(g.chestOk(k, null, new Set()), true);
+  g.noChest[k] |= NO_CHEST_INPUT; // a station input's: chests can't feed stations
+  assert.equal(g.chestOk(k, null, new Set()), false);
+  assert.equal(g.chestOk(k, null, new Set(), true), false);
+  assert.equal(g.chestStarts('flax', g.key(2, 3), 1).some((s) => s.origin.k === k), false);
+});
+
+test('router: branches leave a line from chest hubs at turns, before turns and from chests in the line', () => {
+  const g = grid(10, 10);
+  const W = 3;
+  // A coal line from (1,5): east, a turn north at (2,5), north to a chest in the line at (2,3)
+  // that leaves east, then on to a port.
+  const path = { start: { k: g.key(1, 5), d: E, cost: 0, origin: { type: 'port' } }, goal: { k: g.key(4, 3), d: E, type: 'port' }, steps: [
+    { k: g.key(1, 5), din: E, act: E },
+    { k: g.key(2, 5), din: E, act: N },
+    { k: g.key(2, 4), din: N, act: N },
+    { k: g.key(2, 3), din: N, act: 8 + E },
+    { k: g.key(3, 3), din: E, act: E },
+  ] };
+  g.apply(path, 'coal', 'dist:coal', 's0i0');
+  const hubs = () => new Set(g.branchStarts('coal', 'dist:coal').filter((st) => st.origin.type === 'hub').map((st) => `${g.xy(st.origin.k)}>${st.d}`));
+  assert.deepEqual(hubs(), new Set([
+    '1,5>0', '1,5>2', // a straight belt followed by a turn
+    '2,5>1', '2,5>2', // the turn: straight on, or out of the far side
+    '2,3>0', `2,3>${W}`, // the chest in the line, from the sides items neither enter nor leave by
+  ]));
+  // None before a chest (chests only output onto belts) or before the port; the turn still takes a splitter too.
+  assert.ok(g.branchStarts('coal', 'dist:coal').some((st) => st.origin.type === 'splitter' && st.origin.k === g.key(2, 5)));
+  // Never a hub against a station input.
+  g.noChest[g.key(1, 5)] = NO_CHEST_INPUT;
+  assert.deepEqual([...hubs()].filter((h) => h.startsWith('1,5')), []);
+});
+
+test('router: a branch can leave an output chest the source already fills', () => {
+  const g = grid(10, 10);
+  // A Marble Kit line from (1,5) east into a new output chest at (3,5).
+  const path = { start: { k: g.key(1, 5), d: E, cost: 0, origin: { type: 'port' } }, goal: { k: g.key(3, 5), d: E, type: 'newChest' }, steps: [
+    { k: g.key(1, 5), din: E, act: E },
+    { k: g.key(2, 5), din: E, act: E },
+  ] };
+  g.apply(path, 'marble_kit', 's4o', 'final:marble_kit');
+  const starts = g.branchStarts('marble_kit', 's4o').filter((st) => st.origin.type === 'existingHub' && st.origin.k === g.key(3, 5));
+  assert.deepEqual(new Set(starts.map((st) => st.d)), new Set([N, E, S]));
+  assert.equal(g.branchStarts('marble_kit', 's9o').length, 0); // another source's chest
+});
+
 function smallFactory() {
   const l = Layout.blank(20, 14);
   for (let x = 0; x < 20; x++) l.setTerrain(x, 13, VOID);
@@ -169,6 +234,56 @@ function routedPlan(layout, targets, iterations, seeds = [1, 2, 3, 4, 5, 6], opt
   return assert.fail('no seed routed everything');
 }
 
+test('planner: every port of a placed station faces the floor, used or not', () => {
+  // Wooden Kit I takes one ingredient, so one of the bench's two inputs is unused. A
+  // notch in the floor leaves spots where one input faces the floor and the other doesn't.
+  const layout = smallFactory();
+  layout.setTerrain(6, 9, VOID);
+  const pl = new Planner(layout, plan1([{ item: 'wooden_kit_1', rate: 1 }], { distributors: distributorsOf(layout) }), { seed: 1 });
+  const s = pl.stations[0];
+  let checked = 0;
+  for (const spot of pl.spots['3x3']) for (const variant of Object.keys(stationVariants(s.type))) for (const swap of [false, true]) {
+    const p = { ...spot, variant, swap };
+    if (!pl.valid(s, p, [null])) continue;
+    checked++;
+    const st = { kind: 'station', type: s.type, variant, x: p.x, y: p.y };
+    for (const q of layout.ports(st)) assert.ok(layout.isFloor(q.nx, q.ny), `${variant} at ${p.x},${p.y}: port faces ${q.nx},${q.ny}`);
+  }
+  assert.ok(checked > 0);
+});
+
+test('planner: a port\'s held-free cell never takes another station\'s port', () => {
+  // The stone kit bench's side output (access 5,3) points across a one-cell gap at the
+  // building kit bench's output (access 6,3): the cell beyond the first is the second's port.
+  const layout = smallFactory();
+  const pl = new Planner(layout, plan1([{ item: 'building_kit_1', rate: 1 }], { distributors: distributorsOf(layout) }), { seed: 1 });
+  const placements = [{ x: 2, y: 2, variant: 'in_left', swap: false }, null, { x: 6, y: 4, variant: 'out_top_left', swap: false }];
+  placements[1] = pl.spots['3x3'].map((q) => ({ ...q, variant: Object.keys(stationVariants('smithy'))[0], swap: false })).find((q) => q.x >= 12 && pl.valid(pl.stations[1], q, placements));
+  placements.forEach((p, i) => assert.ok(pl.valid(pl.stations[i], p, placements), `station ${i}`));
+  assert.deepEqual(pl.ports(pl.stations[0], placements[0]).output, { x: 4, y: 3, dir: E, nx: 5, ny: 3 });
+  assert.equal(pl.ports(pl.stations[2], placements[2]).output.ny, 3);
+  // The stone kit line (from 5,3) may not use the other bench's output access cell.
+  const allowed = [];
+  const routeSound = RouteGrid.prototype.routeSound;
+  RouteGrid.prototype.routeSound = function (req, tries) {
+    if (req.starts.some((st) => st.k === this.key(5, 3) && st.origin.type === 'port')) allowed.push(...req.allow);
+    return routeSound.call(this, req, tries);
+  };
+  try { pl.evaluate(placements, true); } finally { RouteGrid.prototype.routeSound = routeSound; }
+  assert.ok(allowed.length);
+  assert.ok(!allowed.includes(pl.base.key(6, 3)));
+});
+
+test('planner: cells held free in front of ports lose the hold once a line runs over them', () => {
+  // A hub can't go on a held cell, so a short line built over them couldn't be branched from.
+  const { res } = runPlan(smallFactory(), [{ item: 'building_kit_1', rate: 1 }], 300);
+  const layout = smallFactory();
+  const pl = new Planner(layout, plan1([{ item: 'building_kit_1', rate: 1 }], { distributors: distributorsOf(layout) }), { seed: 1 });
+  const g = pl.evaluate(res.placements, true).grid;
+  const held = [...g.placed.keys()].filter((k) => g.placed.get(k).kind === 'belt' && g.reserved[k] === 2);
+  assert.deepEqual(held, []);
+});
+
 test('planner: builds a valid layout for a small plan', () => {
   const { res, out } = runPlan(smallFactory(), [{ item: 'building_kit_1', rate: 1 }], 300);
   assert.deepEqual(res.failures, []);
@@ -192,8 +307,8 @@ test('planner: Supply: Iron on the real factory floor routes everything', () => 
   assert.deepEqual(res.failures, []);
   assert.deepEqual(layoutIssues(out), []);
   assert.equal(res.stats.stations, 9);
-  // At 1 craft per minute per recipe this needs more power than the factory has.
-  assert.ok(res.stats.power > 200 && res.stats.over === res.stats.power - 200 && res.stats.available === 200, JSON.stringify(res.stats));
+  // The factory has 200 power (game version 1.010); what the plan uses past that is over.
+  assert.ok(res.stats.available === 200 && res.stats.over === Math.max(0, res.stats.power - 200), JSON.stringify(res.stats));
 });
 
 test('planner: plans on the fully repaired floor validate', () => {
@@ -339,4 +454,74 @@ test('planner: Zombie Power can be a final output, made by a Bioreactor', () => 
   const { res, out } = routedPlan(factoryFloor(REPAIRABLE_SECTIONS), [{ item: 'zombie_power', rate: 1 }], 600);
   assert.equal(out.entities.filter((e) => e.kind === 'station' && e.type === 'bioreactor').length, 1);
   assert.deepEqual(layoutIssues(out), []);
+});
+
+test('genetic: builds a valid layout for a small plan', () => {
+  const layout = smallFactory();
+  const prod = plan1([{ item: 'building_kit_1', rate: 1 }], { distributors: distributorsOf(layout) });
+  const ga = new GeneticPlanner(layout, prod, { seed: 1, population: 10 });
+  ga.init();
+  ga.step(100, 0.5);
+  const res = ga.result();
+  const out = layout.clone();
+  applyResult(out, res);
+  assert.deepEqual(res.failures, []);
+  assert.deepEqual(layoutIssues(out), []);
+  assert.equal(res.stats.stations, 3);
+});
+
+test('genetic: repair moves every station to a valid spot', () => {
+  const layout = Layout.fromJSON(fs.readFileSync(new URL('../factory.json', import.meta.url), 'utf8'));
+  const ga = new GeneticPlanner(layout, plan1([{ item: 'supply_iron', rate: 1 }], { distributors: distributorsOf(layout) }), { seed: 2 });
+  // All nine stations piled on one spot.
+  const p = { ...ga.spots['3x3'][200], variant: 'out_top_left', swap: false };
+  const fixed = ga._repair(ga.stations.map(() => ({ ...p })));
+  assert.equal(fixed.filter(Boolean).length, 9);
+  fixed.forEach((q, i) => assert.ok(ga.valid(ga.stations[i], q, fixed), `station ${i} at ${q.x},${q.y}`));
+  assert.ok(fixed.some((q) => q.x === p.x && q.y === p.y), 'one keeps the spot');
+});
+
+test('genetic: crossover lines up stations with the same recipe by position', () => {
+  const layout = Layout.fromJSON(fs.readFileSync(new URL('../factory.json', import.meta.url), 'utf8'));
+  const ga = new GeneticPlanner(layout, plan1([{ item: 'supply_iron', rate: 1 }], { distributors: distributorsOf(layout) }), { seed: 3 });
+  const a = ga.init().placements;
+  // The same layout with the eight smithies listed in another order.
+  const smithies = ga.twins.get('iron_ingot');
+  const b = a.slice();
+  smithies.forEach((i, j) => { b[i] = a[smithies[(j + 3) % smithies.length]]; });
+  assert.notDeepEqual(b, a);
+  assert.deepEqual(ga._align(a, b), a);
+});
+
+test('planner: a layout saved before the search method option loads with both searches and plans', () => {
+  // Settings as the planner panel saved them before `algorithm` existed (format 3),
+  // in a format 1 file (factory.json) and in the format 2 file that version wrote.
+  const old = { targets: [{ item: 'engineering_kit', rate: 1 }], timeSec: 30, maxLevel: {}, recipeChoice: {} };
+  const v1 = { ...JSON.parse(fs.readFileSync(new URL('../factory.json', import.meta.url), 'utf8')), planner: old };
+  const v2 = { ...Layout.fromJSON(JSON.stringify(v1)).toJSON(), version: 2, planner: old };
+  for (const file of [v1, v2]) {
+    const layout = Layout.fromJSON(JSON.stringify(file));
+    assert.deepEqual(layout.planner, { ...old, algorithm: 'both' });
+    assert.equal(file.planner.algorithm, undefined); // the file itself isn't touched
+    const saved = layout.toJSON();
+    assert.equal(saved.version, FORMAT_VERSION);
+    assert.equal(saved.planner.algorithm, 'both');
+    const settings = plannerSettings(layout.planner);
+    assert.equal(settings.timeSec, 30);
+    assert.deepEqual(searchesFor(settings), ['sa', 'ga']);
+    const prod = plan1(settings.targets, { distributors: distributorsOf(layout) });
+    for (const search of [new Planner(layout, prod, { seed: 1 }), new GeneticPlanner(layout, prod, { seed: 1, population: 20 })]) {
+      search.init();
+      search.step(200, 0.5);
+      const res = search.result();
+      const out = layout.clone();
+      applyResult(out, res);
+      assert.deepEqual(res.failures, []);
+      assert.deepEqual(layoutIssues(out), []);
+    }
+  }
+  // A current file keeps its choice, and a layout with no settings gets every default.
+  assert.equal(Layout.fromJSON(JSON.stringify({ ...v2, version: 3, planner: { ...old, algorithm: 'sa' } })).planner.algorithm, 'sa');
+  assert.equal(plannerSettings(undefined).algorithm, 'both');
+  assert.deepEqual(searchesFor({ algorithm: 'sa' }), ['sa']);
 });

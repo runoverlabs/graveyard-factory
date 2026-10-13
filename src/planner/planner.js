@@ -7,7 +7,7 @@
 // penalty per connection that could not be routed.
 
 import { STATIONS, RECIPE_BY_ID, DIRS, ENTITY_KINDS, CELLAR_ITEMS, GARDEN_ITEMS, entityCells, stationDims, stationVariants, isSupplyItem, supplyZoneDistance, PORTER, portersFor } from '../catalog.js';
-import { RouteGrid, DX, DY, COST } from './router.js';
+import { RouteGrid, DX, DY, COST, NO_CHEST_PORT, NO_CHEST_INPUT } from './router.js';
 import { powerOf, powerSupply } from '../model.js';
 
 /** @typedef {import('../types.js').StationType} StationType */
@@ -43,6 +43,12 @@ import { powerOf, powerSupply } from '../model.js';
  * @property {number} [overPowerCost] penalty per point of power over the maximum
  * @property {number} [supplyCornerCost] extra cost per cell from the supply zone
  * @property {number} [timeMs] search budget (used by the worker)
+ * @property {boolean} [earlyStop] false: route every candidate to the end (see Planner.evaluate)
+ * @property {'sa' | 'ga'} [algorithm] annealing (Planner) or genetic (GeneticPlanner)
+ * @property {number} [population] genetic: population size
+ * @property {number} [tournament] genetic: tournament size
+ * @property {number} [crossover] genetic: chance a child is a crossover (else a mutated copy)
+ * @property {number} [mutation] genetic: chance a crossover child is also mutated
  */
 
 /**
@@ -68,9 +74,15 @@ import { powerOf, powerSupply } from '../model.js';
 
 /** @typedef {{ src: Endpoint, sink: Endpoint, item: string, rate?: number, est?: number, buffer?: boolean }} Edge */
 
-/** @typedef {{ reason?: 'no room', station?: number, item?: string, from?: string, to?: string }} Failure */
+/**
+ * A connection that couldn't be made. `why`: no free place to start from (e.g. no turn or free side
+ * to branch off the source's line), nothing to arrive at, or no path between them; `branch`: the source
+ * already fed a line; `merge`: the sink was already connected. `est`: its estimated length. The score
+ * doesn't use them (grading failures didn't help the annealing); the benchmark reports them.
+ * @typedef {{ reason?: 'no room', station?: number, item?: string, from?: string, to?: string, why?: 'no start' | 'no target' | 'no path', branch?: boolean, merge?: boolean, est?: number }} Failure
+ */
 
-/** @typedef {{ score: number, failed: number, failures: Failure[], grid: RouteGrid, edges: number, power: number, over: number }} Evaluation */
+/** @typedef {{ score: number, failed: number, failures: Failure[], grid: RouteGrid, edges: number, power: number, over: number, aborted?: boolean }} Evaluation */
 /** @typedef {{ placements: Placement[], score: number, failed: number }} SearchState */
 
 /**
@@ -191,6 +203,9 @@ export class Planner {
     this._buildAprons();
     this._buildSupplyCells();
     this.iterations = 0;
+    // Placements routed: the same unit for every search (an annealing step may be
+    // rejected before routing, a genetic one skip a duplicate).
+    this.evaluations = 0;
   }
 
   // ---- static obstacles from the base layout --------------------------------
@@ -229,7 +244,7 @@ export class Planner {
         if (!l.inBounds(p.nx, p.ny)) continue;
         const k = g.key(p.nx, p.ny);
         if (g.occ[k] === 0) g.reserved[k] = 0;
-        g.noChest[k] = 1;
+        g.noChest[k] |= e.kind === 'station' && p.kind === 'in' ? NO_CHEST_INPUT : NO_CHEST_PORT;
         if (ENTITY_KINDS[e.kind].feeds && p.kind === 'out') {
           if (e.kind === 'distributor' && e.garden && !e.material) freeGarden.push({ id: e.id, k, d: p.dir });
           else if (e.kind === 'distributor') this.distributors.set(e.material, { k, d: p.dir });
@@ -437,6 +452,11 @@ export class Planner {
     const { inputs, output } = this.ports(s, p);
     const access = [...inputs, output].map((q) => [q.nx, q.ny]);
     for (const [x, y] of access) if (!cellFree(x, y)) return false;
+    // Ports the recipe doesn't use must face the floor too (Layout.validate checks every port).
+    for (const q of stationVariants(s.type)[p.variant].ports) {
+      const x = p.x + q.x + DX[q.dir], y = p.y + q.y + DY[q.dir];
+      if (x < 0 || y < 0 || x >= g.W || y >= g.H || !g.floor[g.key(x, y)]) return false;
+    }
     for (let i = 0; i < placements.length; i++) {
       const o = placements[i];
       if (!o || i === s.idx) continue;
@@ -527,29 +547,36 @@ export class Planner {
    * @overload
    * @param {(Placement | null)[]} placements
    * @param {false} [collect]
+   * @param {number} [maxFailed]
    * @returns {{ score: number, failed: number }}
    */
   /**
    * @overload
    * @param {(Placement | null)[]} placements
    * @param {true} collect
+   * @param {number} [maxFailed]
    * @returns {Evaluation}
    */
   /**
    * @param {(Placement | null)[]} placements
    * @param {boolean} [collect]
+   * @param {number} [maxFailed] stop routing once more connections than this have failed: the
+   *   caller would reject the placement anyway, and a failed route is the slowest (A* searches
+   *   everything it can reach). The result then has an infinite score and `aborted`.
    */
-  evaluate(placements, collect = false) {
-    const r = this._evaluate(placements);
+  evaluate(placements, collect = false, maxFailed = Infinity) {
+    this.evaluations++;
+    const r = this._evaluate(placements, this.options.earlyStop === false ? Infinity : maxFailed);
     if (!collect) return { score: r.score, failed: r.failures.length };
     return r;
   }
 
   /**
    * @param {(Placement | null)[]} placements
+   * @param {number} [maxFailed]
    * @returns {Evaluation}
    */
-  _evaluate(placements) {
+  _evaluate(placements, maxFailed = Infinity) {
     const b = this.base;
     const g = new RouteGrid(b.W, b.H);
     for (const f of /** @type {const} */ (['floor', 'occ', 'rot', 'gap', 'body', 'reserved', 'noChest', 'chestFeeds', 'distFront'])) g[f].set(b[f]);
@@ -590,9 +617,13 @@ export class Planner {
       g.reserved[k] = 2;
       return k;
     };
-    const release = (/** @type {number} */ k) => { if (k >= 0 && g.occ[k] === 0) g.reserved[k] = -1; };
+    // Also once a line runs over it: a hub can't go on a reserved cell.
+    const release = (/** @type {number} */ k) => { if (k >= 0) g.reserved[k] = -1; };
     /** @type {Failure[]} */
     const failures = [];
+    // Every station and its used ports' access cells first, then the stubs: a
+    // stub must not take a cell another station needs (one station's side output
+    // can point straight at the next one's port across a one-cell gap).
     this.stations.forEach((s, i) => {
       const p = placements[i];
       if (!p) {
@@ -602,16 +633,20 @@ export class Planner {
       for (let dy = 0; dy < sizeOf(s).h; dy++) for (let dx = 0; dx < sizeOf(s).w; dx++) g.block(g.key(p.x + dx, p.y + dy));
       for (const q of stationVariants(s.type)[p.variant].ports) {
         const k = g.step(g.key(p.x + q.x, p.y + q.y), q.dir);
-        if (k >= 0) g.noChest[k] = 1;
+        if (k >= 0) g.noChest[k] |= q.kind === 'in' ? NO_CHEST_INPUT : NO_CHEST_PORT;
       }
+      const { inputs, output } = this.ports(s, p);
+      for (const q of [...inputs, output]) g.reserved[g.key(q.nx, q.ny)] = 1;
+    });
+    this.stations.forEach((s, i) => {
+      const p = placements[i];
+      if (!p) return;
       const { inputs, output } = this.ports(s, p);
       inputs.forEach((q, j) => {
         const n = g.key(q.nx, q.ny);
-        g.reserved[n] = 1;
         sinks.push({ id: `s${i}i${j}`, item: q.item, rate: s.ingredients[j].rate, qty: s.ingredients[j].qty, n, stub: stub(n, q.dir), P: g.key(q.x, q.y), into: rev(q.dir), station: i });
       });
       const n = g.key(output.nx, output.ny);
-      g.reserved[n] = 1;
       producers.push({ id: `s${i}o`, item: s.item, rate: s.outRate, n, stub: stub(n, output.dir), d: output.dir, station: i });
     });
 
@@ -727,7 +762,9 @@ export class Planner {
         ? g.routeSound({ starts, targets, flexChest, allow, exempt, noPass: isSupplyItem(item), goalCells: flexChest ? null : [...targets.keys()] })
         : null;
       if (!res) {
-        failures.push({ item, from: src.id, to: sink.id });
+        const why = !starts.length ? 'no start' : !(flexChest || targets.size) ? 'no target' : 'no path';
+        failures.push({ item, from: src.id, to: sink.id, why, branch: !src.chest && usedSrc.has(src.id), merge: connected.has(sink.id), est: e.est });
+        if (failures.length > maxFailed) return { score: Infinity, failed: failures.length, failures, grid: g, edges: edges.length, power: 0, over: 0, aborted: true };
         continue;
       }
       g.apply(res, item, src.id, sink.id);
@@ -767,7 +804,9 @@ export class Planner {
       this.iterations++;
       const placements = this._neighbour(this.current.placements);
       if (!placements) continue;
-      const r = this.evaluate(placements);
+      // A candidate with more unrouted connections is all but never accepted
+      // (each costs FAIL_COST, far above the temperature), so stop routing it there.
+      const r = this.evaluate(placements, false, this.current.failed);
       const delta = r.score - this.current.score;
       if (delta <= 0 || this.random() < Math.exp(-delta / T)) {
         this.current = { placements, ...r };

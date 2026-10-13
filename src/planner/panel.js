@@ -15,12 +15,32 @@ import { t, getLanguage } from '../i18n.js';
 /** @typedef {import('./planner.js').Failure} Failure */
 /** @typedef {import('./worker.js').WorkerStart} WorkerStart */
 /** @typedef {import('./worker.js').WorkerOut} WorkerOut */
-/** Latest progress report; `done` once the search has finished. @typedef {{ iterations: number, elapsed: number, done?: boolean }} Progress */
+/** Latest progress report; `done` once the search has finished. @typedef {{ evaluations: number, elapsed: number, done?: boolean }} Progress */
 /** Attributes for `h()`; values are stringified by setAttribute. @typedef {Record<string, string | number>} Attrs */
 
 const TIME_CHOICES = [10, 30, 60, 180, 600];
 /** @type {import('../model.js').PlannerSettings} */
-const DEFAULT_SETTINGS = { targets: [], timeSec: 30, maxLevel: {}, recipeChoice: {} };
+const DEFAULT_SETTINGS = { targets: [], timeSec: 30, algorithm: /** @type {'both' | 'ga' | 'sa'} */ ('both'), maxLevel: {}, recipeChoice: {} };
+// Neither search wins on every plan (docs/INTERNALS.md "Search"), so by default both run, each in its own worker, and the better result is kept.
+/** @type {Record<string, ('ga' | 'sa')[]>} */
+const SEARCHES = { both: ['sa', 'ga'], ga: ['ga'], sa: ['sa'] };
+
+/**
+ * Saved planner settings with the defaults filled in (a layout may have none;
+ * files from before `algorithm` get it in Layout.fromJSON).
+ * @param {import('../model.js').PlannerSettings} [saved]
+ */
+export const plannerSettings = (saved) => ({ ...DEFAULT_SETTINGS, ...saved });
+
+/**
+ * The searches to run for some settings, each in its own worker.
+ * @param {import('../model.js').PlannerSettings} settings
+ */
+export const searchesFor = (settings) => SEARCHES[settings.algorithm ?? 'both'] ?? SEARCHES.both;
+
+// Fewer unrouted connections first, then the lower score.
+/** @param {PlanResult} a @param {PlanResult} b */
+const better = (a, b) => a.failures.length - b.failures.length || a.score - b.score;
 
 // Items a target can be: anything a factory recipe makes.
 const TARGET_ITEMS = ITEMS.filter((p) => RECIPES.some((r) => p.id in r.outputs));
@@ -33,9 +53,11 @@ export class PlannerPanel {
   constructor(editor, el) {
     this.editor = editor;
     this.el = el;
-    /** @type {Worker | null} */
-    this.worker = null;
+    /** Running searches, by method. @type {Map<string, Worker>} */
+    this.workers = new Map();
     this.running = false;
+    /** Latest progress of each search. @type {Map<string, Progress>} */
+    this.progresses = new Map();
     /** @type {Progress | null} */
     this.progress = null;
     /** @type {PlanResult | null} */
@@ -45,7 +67,7 @@ export class PlannerPanel {
 
   get settings() {
     const l = this.editor.layout;
-    l.planner = { ...DEFAULT_SETTINGS, ...l.planner };
+    l.planner = plannerSettings(l.planner);
     return l.planner;
   }
 
@@ -78,42 +100,61 @@ export class PlannerPanel {
   start(resume = false) {
     const production = this.production();
     if (!production.stations) return;
-    if (this.worker) { this.worker.terminate(); this.worker = null; }
+    this.terminate();
     const initial = resume ? this.result?.placements : null;
     if (!resume) this.result = null;
-    this.progress = { iterations: 0, elapsed: 0 };
+    this.progress = { evaluations: 0, elapsed: 0 };
+    this.progresses.clear();
     this.running = true;
-    this.worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
-    this.worker.onmessage = (ev) => this.onMessage(ev.data);
-    this.worker.onerror = (ev) => { this.running = false; this.editor.status(t('planner.failed', { message: ev.message }), true); this.render(); };
-    this.worker.postMessage(/** @type {WorkerStart} */ ({
-      type: 'start',
-      layout: this.baseLayout().toJSON(),
-      production,
-      options: { timeMs: this.settings.timeSec * 1000, seed: Math.floor(Math.random() * 1e9) },
-      initial,
-    }));
+    const layout = this.baseLayout().toJSON();
+    for (const algorithm of searchesFor(this.settings)) {
+      const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+      this.workers.set(algorithm, worker);
+      worker.onmessage = (ev) => { if (this.workers.get(algorithm) === worker) this.onMessage(algorithm, ev.data); };
+      worker.onerror = (ev) => { this.terminate(); this.editor.status(t('planner.failed', { message: ev.message }), true); this.render(); };
+      worker.postMessage(/** @type {WorkerStart} */ ({
+        type: 'start',
+        layout,
+        production,
+        options: { timeMs: this.settings.timeSec * 1000, seed: Math.floor(Math.random() * 1e9), algorithm },
+        initial,
+      }));
+    }
     this.render();
   }
 
   stop() {
-    if (this.worker && this.running) this.worker.postMessage({ type: 'stop' });
+    if (this.running) for (const w of this.workers.values()) w.postMessage({ type: 'stop' });
   }
 
-  /** @param {WorkerOut} msg */
-  onMessage(msg) {
-    this.progress = msg.type === 'progress' ? msg : { ...this.progress, done: true };
-    if (!msg.result && msg.type === 'progress') { this.renderProgress(); return; }
-    if (msg.result) {
+  // End every search at once, dropping what it would still report.
+  terminate() {
+    for (const w of this.workers.values()) w.terminate();
+    this.workers.clear();
+    this.running = false;
+  }
+
+  /** @param {string} algorithm @param {WorkerOut} msg */
+  onMessage(algorithm, msg) {
+    const prev = this.progresses.get(algorithm);
+    this.progresses.set(algorithm, msg.type === 'progress' ? { evaluations: msg.evaluations, elapsed: msg.elapsed } : { evaluations: prev?.evaluations ?? 0, elapsed: prev?.elapsed ?? 0, done: true });
+    // Together: layouts tried (routed, the same unit for both searches) add up, the time is the longest.
+    const all = [...this.progresses.values()];
+    this.progress = { evaluations: all.reduce((n, p) => n + p.evaluations, 0), elapsed: Math.max(...all.map((p) => p.elapsed)) };
+    if (msg.type === 'done') {
+      this.workers.get(algorithm)?.terminate();
+      this.workers.delete(algorithm);
+      this.running = this.workers.size > 0;
+      if (!this.running) this.progress.done = true;
+    }
+    // Only a strictly better result replaces the shown one (a tie would just redraw the preview).
+    const improved = msg.result && (!this.result || better(msg.result, this.result) < 0);
+    if (improved) {
       this.result = msg.result;
       this.editor.setPreview(this.previewLayout());
     }
-    if (msg.type === 'done') {
-      this.running = false;
-      this.worker.terminate();
-      this.worker = null;
-    }
-    this.render();
+    if (improved || msg.type === 'done') this.render();
+    else this.renderProgress();
   }
 
   previewLayout() {
@@ -138,7 +179,7 @@ export class PlannerPanel {
   }
 
   discard() {
-    this.stop();
+    this.terminate();
     this.editor.setPreview(null);
     this.result = null;
     this.progress = null;
@@ -174,7 +215,9 @@ export class PlannerPanel {
 
     // Options.
     const time = selectEl(TIME_CHOICES.map((t) => [t, `${t} s`]), s.timeSec, (v) => this.update({ timeSec: +v }));
-    el.append(h('h3', {}, t('planner.options')), field(t('planner.searchTime'), time));
+    const method = selectEl([['both', t('planner.searchBoth')], ['ga', t('planner.searchGenetic')], ['sa', t('planner.searchAnnealing')]], s.algorithm,
+      (v) => this.update({ algorithm: v === 'sa' || v === 'ga' ? v : 'both' }));
+    el.append(h('h3', {}, t('planner.options')), field(t('planner.searchTime'), time), field(t('planner.searchMethod'), method));
     for (const [type, def] of /** @type {[StationType, StationDef][]} */ (Object.entries(STATIONS))) {
       const max = s.maxLevel[type] ?? Math.max(...def.levels);
       el.append(field(t('planner.upTo', { name: def.name }), selectEl(def.levels.map((l) => [l, ROMAN[l]]), max,
@@ -246,7 +289,7 @@ export class PlannerPanel {
     if (this.progress) {
       const p = this.progress;
       const r = this.result;
-      const lines = [t('planner.progress', { state: t(this.running ? 'planner.searching' : 'planner.done'), seconds: (p.elapsed / 1000).toFixed(1), n: p.iterations })];
+      const lines = [t('planner.progress', { state: t(this.running ? 'planner.searching' : 'planner.done'), seconds: (p.elapsed / 1000).toFixed(1), n: p.evaluations })];
       if (r) {
         const st = r.stats;
         const parts = [t('count.stations', { n: st.stations }), t('count.belts', { n: st.belts }), t('count.undergrounds', { n: st.undergrounds }),

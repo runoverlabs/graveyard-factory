@@ -6,6 +6,7 @@
   "scripts": {
     "start": "python3 -m http.server 8000",
     "test": "node --test test/*.test.js",
-    "typecheck": "npx -y -p typescript@5 tsc -p jsconfig.json"
+    "typecheck": "npx -y -p typescript@5 tsc -p jsconfig.json",
+    "bench": "node tools/bench-planner.js"
   }
 }

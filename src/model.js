@@ -24,6 +24,7 @@ import { t } from './i18n.js';
  * @typedef {object} PlannerSettings
  * @property {Target[]} [targets]
  * @property {number} [timeSec]
+ * @property {'both' | 'ga' | 'sa'} [algorithm] layout search: both at once (the better result kept), genetic or simulated annealing
  * @property {Partial<Record<StationType, number>>} [maxLevel]
  * @property {Record<string, string>} [recipeChoice]
  */
@@ -73,7 +74,7 @@ const TERRAIN_ALIASES = { '_': VOID, '#': VOID, 'O': VOID, 'o': VOID, '0': VOID 
 
 // Version 2: the factory grid gained 12 rows on top for the floor sections
 // that can be repaired, and the floor comes from `repaired`.
-export const FORMAT_VERSION = 2;
+export const FORMAT_VERSION = 3;
 // Version 1 files of the factory floor were this size; they move down 12 rows.
 const V1_FACTORY = { width: 42, height: 43, shift: 12 };
 
@@ -644,7 +645,11 @@ export class Layout {
   static fromJSON(json) {
     const data = /** @type {LayoutJSON} */ (typeof json === 'string' ? JSON.parse(json) : json);
     if (!Array.isArray(data.terrain)) throw new Error(t('error.missingTerrain'));
-    const layout = new Layout({ name: data.name, width: 1, height: 1, entities: [], planner: data.planner, beltMaster: !!data.beltMaster });
+    let planner = data.planner;
+    // Before format 3 the planner had one search (annealing) and no `algorithm`;
+    // such files get today's default, both searches.
+    if (planner && (data.version ?? 1) < 3 && !planner.algorithm) planner = { ...planner, algorithm: 'both' };
+    const layout = new Layout({ name: data.name, width: 1, height: 1, entities: [], planner, beltMaster: !!data.beltMaster });
     layout.setTerrainFromText(data.terrain.join('\n'));
     if (data.width) layout.resize({ right: data.width - layout.width });
     if (data.height) layout.resize({ bottom: data.height - layout.height });

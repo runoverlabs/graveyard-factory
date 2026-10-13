@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { Layout, FLOOR, VOID, REPAIRABLE_SECTIONS } from '../src/model.js';
+import { Layout, FLOOR, VOID, REPAIRABLE_SECTIONS, FORMAT_VERSION } from '../src/model.js';
 import {
   N, E, S, W, RECIPES, ITEM_BY_ID, STATIONS, EXTENSIONS, CONVEYOR_ART, CHEST_LEVELS, TALENTS, BELT_MASTER_ICON, POWER_ICON, FLOOR_SECTIONS, FLOOR_GRID, FACTORY_DISTRIBUTORS, FACTORY_CELLAR, CELLAR_ITEMS, stationVariants, extensionsFor, extensionArt,
 } from '../src/catalog.js';
@@ -314,9 +314,9 @@ test('format 1 factory files move down 12 rows and get their repaired sections',
   assert.equal(l.height, FLOOR_GRID.height);
   assert.deepEqual(l.getEntity(99), { id: 99, kind: 'belt', x: 5, y: 32, rot: 0, locked: true });
   assert.deepEqual(l.entities.filter((e) => e.kind === 'distributor').map((e) => e.y), FACTORY_DISTRIBUTORS.map((d) => d.y));
-  // Saved again, it's format 2 with the sections, and loads unchanged.
+  // Saved again, it's the current format with the sections, and loads unchanged.
   const json = l.toJSON();
-  assert.equal(json.version, 2);
+  assert.equal(json.version, FORMAT_VERSION);
   assert.deepEqual(json.repaired, DEFAULT_REPAIRED);
   assert.equal(Layout.fromJSON(json).terrainToText(), l.terrainToText());
   assert.deepEqual(Layout.fromJSON(json).getEntity(99), l.getEntity(99));
