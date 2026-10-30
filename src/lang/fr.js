@@ -251,6 +251,7 @@ export default {
   'port.input': 'entrée',
   'port.output': 'sortie',
   'issue.chestCantFeed': '{chest} ne peut pas alimenter {station} directement — placez un tapis entre les deux',
+  'issue.chestIntoChest': '{what} ne peut pas passer d\'objets à {chest} : les coffres ne sortent que sur des tapis — placez un tapis entre les deux',
   'issue.sideOutputChest': '{what} : une sortie latérale ne peut pas pousser directement dans {chest} — placez un tapis entre les deux',
   'issue.beltsFaceEachOther': 'Les tapis en {a} et {b} se font face',
   'issue.feedsNoInput': '{what} alimente {target} par un côté sans entrée',

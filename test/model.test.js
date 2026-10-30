@@ -136,6 +136,17 @@ test('station output can push straight into a chest; chest cannot feed a station
   assert.match(msgs[0], /Chest \(Coal\) at 4,5 can't feed Smithy I at 2,2 directly/);
 });
 
+test('a chest side filtered towards another chest is a warning: chests only output onto belts', () => {
+  const l = Layout.blank(5, 5);
+  l.add({ kind: 'chest', x: 1, y: 2, stock: ['coal'] });
+  l.add({ kind: 'chest', x: 2, y: 2, stock: ['coal'] }); // unfiltered neighbours: fine
+  assert.deepEqual(l.validate(), []);
+  l.update(l.entityAt(1, 2).id, { filters: { E: 'coal' } });
+  const msgs = l.validate().map((i) => i.message);
+  assert.equal(msgs.length, 1);
+  assert.match(msgs[0], /Chest \(Coal\) at 1,2 can't pass items to Chest \(Coal\) at 2,2/);
+});
+
 test('older files migrate: chest material -> stock, station rotation dropped', () => {
   const l = Layout.fromJSON({ terrain: ['.....'], entities: [
     { id: 1, kind: 'chest', x: 0, y: 0, rot: 1, material: 'coal' },

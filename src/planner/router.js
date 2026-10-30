@@ -109,6 +109,8 @@ export const COST = {
 export const MAX_STATIONS_PER_BELT = 3;
 export const NO_CHEST_PORT = 1, NO_CHEST_INPUT = 2;
 const FREE = 0, BLOCKED = 1, BELT = 2, CHEST = 3;
+/** Network nodes that are chests. @type {Set<NetNode['kind']>} */
+const CHEST_NODES = new Set(['hub', 'pass', 'chest']);
 
 export class RouteGrid {
   /**
@@ -302,8 +304,9 @@ export class RouteGrid {
       // A chest only outputs onto a belt, so a route starting at a chest (the
       // `straight` starts) must lay at least one belt before it can finish.
       const fromChest = straight && this.parent[n] === -1;
-      // A station's side output can't push straight into a chest.
-      const noChestHere = this.parent[n] === -1 && startOf.get(n)?.noChest;
+      // A station's side output can't push straight into a chest, and nor can a
+      // chest (every `straight` arrival leaves one).
+      const noChestHere = straight || (this.parent[n] === -1 && startOf.get(n)?.noChest);
       let t = !fromChest && targets.get(k);
       if (t && noChestHere && t.end.type === 'chest') t = null;
       if (t && t.mask & (1 << d)) {
@@ -311,7 +314,7 @@ export class RouteGrid {
         const total = g + (t.cost ?? 0);
         if (!best || total < best.total) best = { n, total, goal: { k, d, ...t.end } };
       }
-      if (flexChest && !fromChest && !noChestHere && this.chestOk(k, d, allow)) return this._path(n, startOf, { k, d, type: 'newChest' });
+      if (flexChest && !noChestHere && this.chestOk(k, d, allow)) return this._path(n, startOf, { k, d, type: 'newChest' });
       // Place a belt here.
       const outs = straight ? [d] : [d, (d + 1) % 4, (d + 3) % 4];
       for (const r of outs) {
@@ -648,10 +651,12 @@ export class RouteGrid {
         // Or a chest hub, at a turn or on a straight: the line carries on out of the side it
         // already left by (a chest only outputs onto a belt, so the next piece must be one,
         // or an underground's entry), the branch leaves from another side. Never against a
-        // station input: chests can't feed stations.
+        // station input: chests can't feed stations. Nor right after a chest, which
+        // can't push into another one.
         const next = nd.next.length === 1 ? nd.next[0] : null;
         const feedsBelt = next?.kind === 'belt' || (next?.kind === 'underground' && next.rot === nd.rot);
-        if (this.reserved[nd.k] === -1 && !(this.noChest[nd.k] & NO_CHEST_INPUT) && feedsBelt) hubStarts(nd.k, nd.din, nd.rot, COST.hub);
+        const fedByChest = CHEST_NODES.has(nd.prev[0].kind);
+        if (this.reserved[nd.k] === -1 && !(this.noChest[nd.k] & NO_CHEST_INPUT) && feedsBelt && !fedByChest) hubStarts(nd.k, nd.din, nd.rot, COST.hub);
       } else if (nd.kind === 'pass' && nd.prev.length === 1) {
         // A chest in the line: filter another side to the item and it's a hub.
         hubStarts(nd.k, nd.din, nd.rot, COST.passHub);

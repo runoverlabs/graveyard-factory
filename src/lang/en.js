@@ -253,6 +253,7 @@ export default {
   'port.input': 'input',
   'port.output': 'output',
   'issue.chestCantFeed': '{chest} can\'t feed {station} directly — put a belt in between',
+  'issue.chestIntoChest': '{what} can\'t pass items to {chest}: chests only output onto belts — put a belt in between',
   'issue.sideOutputChest': '{what}: a side output can\'t push straight into {chest} — put a belt in between',
   'issue.beltsFaceEachOther': 'Belts at {a} and {b} face each other',
   'issue.feedsNoInput': '{what} feeds {target} from a side with no input',

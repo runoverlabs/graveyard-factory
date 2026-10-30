@@ -239,6 +239,7 @@ export default {
   'port.input': '입력',
   'port.output': '출력',
   'issue.chestCantFeed': '{chest}은(는) {station}에 직접 공급할 수 없습니다 — 사이에 벨트를 놓으세요',
+  'issue.chestIntoChest': '{what}은(는) {chest}에 아이템을 넘길 수 없습니다: 상자는 벨트로만 내보냅니다 — 사이에 벨트를 놓으세요',
   'issue.sideOutputChest': '{what}: 측면 출력은 {chest}에 바로 넣을 수 없습니다 — 사이에 벨트를 놓으세요',
   'issue.beltsFaceEachOther': '{a}와(과) {b}의 벨트가 서로 마주 봅니다',
   'issue.feedsNoInput': '{what}이(가) 입력이 없는 쪽에서 {target}에 공급합니다',

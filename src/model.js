@@ -549,6 +549,10 @@ export class Layout {
         for (const [side, id] of Object.entries(e.filters)) {
           if (!DIRS.some((d) => d.name === side)) add('error', e, t('issue.unknownFilterSide', { what: describeEntity(e), side }));
           if (!ITEM_BY_ID[id]) add('error', e, t('issue.unknownFilterItem', { what: describeEntity(e), id, side }));
+          // Chests only output onto belts: a side filtered towards another chest sends nothing.
+          const d = DIRS.find((dd) => dd.name === side);
+          const next = d && this.entityAt(e.x + d.dx, e.y + d.dy);
+          if (next?.kind === 'chest') add('warning', e, t('issue.chestIntoChest', { what: describeEntity(e), chest: describeEntity(next) }), [[e.x, e.y], [next.x, next.y]]);
         }
       }
 

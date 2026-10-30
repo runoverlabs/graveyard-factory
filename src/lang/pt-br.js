@@ -251,6 +251,7 @@ export default {
   'port.input': 'entrada',
   'port.output': 'saída',
   'issue.chestCantFeed': '{chest} não pode alimentar {station} diretamente — coloque uma esteira entre eles',
+  'issue.chestIntoChest': '{what} não pode passar itens para {chest}: baús só soltam em esteiras — coloque uma esteira entre eles',
   'issue.sideOutputChest': '{what}: uma saída lateral não pode empurrar direto para {chest} — coloque uma esteira entre eles',
   'issue.beltsFaceEachOther': 'As esteiras em {a} e {b} ficam de frente uma para a outra',
   'issue.feedsNoInput': '{what} alimenta {target} por um lado sem entrada',

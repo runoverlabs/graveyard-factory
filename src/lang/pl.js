@@ -275,6 +275,7 @@ export default {
   'port.input': 'wejście',
   'port.output': 'wyjście',
   'issue.chestCantFeed': '{chest} nie może zasilać bezpośrednio: {station} — wstaw taśmę pośrodku',
+  'issue.chestIntoChest': '{what} nie może przekazywać przedmiotów do: {chest} — skrzynie wydają tylko na taśmy, wstaw taśmę pośrodku',
   'issue.sideOutputChest': '{what}: boczne wyjście nie może wpychać prosto do: {chest} — wstaw taśmę pośrodku',
   'issue.beltsFaceEachOther': 'Taśmy na {a} i {b} są zwrócone ku sobie',
   'issue.feedsNoInput': '{what} zasila {target} od strony bez wejścia',

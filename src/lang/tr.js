@@ -251,6 +251,7 @@ export default {
   'port.input': 'giriş',
   'port.output': 'çıkış',
   'issue.chestCantFeed': '{chest}, {station} istasyonunu doğrudan besleyemez — araya bir bant koy',
+  'issue.chestIntoChest': '{what}, {chest} sandığına eşya aktaramaz: sandıklar yalnızca bantlara çıkarır — araya bir bant koy',
   'issue.sideOutputChest': '{what}: yan çıkış doğrudan {chest} içine itemez — araya bir bant koy',
   'issue.beltsFaceEachOther': '{a} ve {b} konumlarındaki bantlar birbirine bakıyor',
   'issue.feedsNoInput': '{what}, {target} hedefini girişi olmayan bir yandan besliyor',

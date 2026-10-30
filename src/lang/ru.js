@@ -275,6 +275,7 @@ export default {
   'port.input': 'вход',
   'port.output': 'выход',
   'issue.chestCantFeed': '{chest} не может питать {station} напрямую — поставьте между ними ленту',
+  'issue.chestIntoChest': '{what} не может передавать предметы в {chest}: сундуки выдают только на ленты — поставьте между ними ленту',
   'issue.sideOutputChest': '{what}: боковой выход не может подавать прямо в {chest} — поставьте между ними ленту',
   'issue.beltsFaceEachOther': 'Ленты в {a} и {b} направлены друг на друга',
   'issue.feedsNoInput': '{what} питает {target} со стороны без входа',

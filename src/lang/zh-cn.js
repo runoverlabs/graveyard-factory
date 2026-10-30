@@ -239,6 +239,7 @@ export default {
   'port.input': '输入',
   'port.output': '输出',
   'issue.chestCantFeed': '{chest}不能直接向{station}供料：中间需要放一条传送带',
+  'issue.chestIntoChest': '{what}不能把物品传给{chest}：箱子只会输出到传送带上，中间需要放一条传送带',
   'issue.sideOutputChest': '{what}：侧面输出不能直接推入{chest}：中间需要放一条传送带',
   'issue.beltsFaceEachOther': '{a}和{b}处的传送带相互对着',
   'issue.feedsNoInput': '{what}从没有输入的一侧向{target}供料',

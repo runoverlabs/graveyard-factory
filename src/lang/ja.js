@@ -239,6 +239,7 @@ export default {
   'port.input': '入力',
   'port.output': '出力',
   'issue.chestCantFeed': '{chest}は{station}へ直接送れません — 間にベルトを置いてください',
+  'issue.chestIntoChest': '{what}は{chest}へアイテムを渡せません：チェストはベルトにしか出力しません — 間にベルトを置いてください',
   'issue.sideOutputChest': '{what}：側面出力は{chest}へ直接送れません — 間にベルトを置いてください',
   'issue.beltsFaceEachOther': '{a}と{b}のベルトが向かい合っています',
   'issue.feedsNoInput': '{what}が、入力のない側面から{target}へ送っています',

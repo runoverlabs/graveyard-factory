@@ -251,6 +251,7 @@ export default {
   'port.input': 'entrada',
   'port.output': 'salida',
   'issue.chestCantFeed': '{chest} no puede alimentar directamente a {station}: pon una cinta en medio',
+  'issue.chestIntoChest': '{what} no puede pasar objetos a {chest}: los cofres solo sacan a cintas — pon una cinta en medio',
   'issue.sideOutputChest': '{what}: una salida lateral no puede empujar directamente a {chest}: pon una cinta en medio',
   'issue.beltsFaceEachOther': 'Las cintas en {a} y {b} se enfrentan',
   'issue.feedsNoInput': '{what} alimenta a {target} por un lado sin entrada',

@@ -251,6 +251,7 @@ export default {
   'port.input': 'Eingang',
   'port.output': 'Ausgang',
   'issue.chestCantFeed': '{chest} kann {station} nicht direkt speisen — setze ein Band dazwischen',
+  'issue.chestIntoChest': '{what} kann keine Gegenstände an {chest} weitergeben: Truhen geben nur auf Bänder aus — setze ein Band dazwischen',
   'issue.sideOutputChest': '{what}: Ein seitlicher Ausgang kann nicht direkt in {chest} schieben — setze ein Band dazwischen',
   'issue.beltsFaceEachOther': 'Bänder bei {a} und {b} zeigen aufeinander',
   'issue.feedsNoInput': '{what} speist {target} von einer Seite ohne Eingang',

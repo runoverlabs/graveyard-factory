@@ -186,6 +186,33 @@ test('router: branches leave a line from chest hubs at turns, before turns and f
   assert.deepEqual([...hubs()].filter((h) => h.startsWith('1,5')), []);
 });
 
+test('router: a chest never hands items to another chest (chests only output onto belts)', () => {
+  // Arriving at (2,1) moving east, the cheapest way into the chest at (2,0) would be a
+  // chest in the line turning north: it must be a belt.
+  const g = grid(5, 3);
+  const C = g.key(2, 0);
+  g.addChestAt(C);
+  g.net.set(C, { k: C, kind: 'chest', item: 'coal', next: [], prev: [], up: new Set(), down: new Set(['final:coal']) });
+  const targets = new Map();
+  g.chestTarget(C, targets);
+  const res = g.route({ starts: [{ k: g.key(0, 1), d: E, cost: 0, origin: { type: 'port' } }], targets, allow: new Set(), goalCells: [C] });
+  assert.equal(res.goal.k, C);
+  assert.ok(res.steps.at(-1).act < 4, 'the piece before the chest is a belt');
+  // A belt right after a chest in the line doesn't become a hub, which the chest couldn't feed.
+  const h = grid(10, 10);
+  h.apply({ start: { k: h.key(1, 5), d: E, cost: 0, origin: { type: 'port' } }, goal: { k: h.key(5, 3), d: E, type: 'port' }, steps: [
+    { k: h.key(1, 5), din: E, act: E },
+    { k: h.key(2, 5), din: E, act: 8 + N },
+    { k: h.key(2, 4), din: N, act: N },
+    { k: h.key(2, 3), din: N, act: E },
+    { k: h.key(3, 3), din: E, act: E },
+    { k: h.key(4, 3), din: E, act: E },
+  ] }, 'coal', 'dist:coal', 's0i0');
+  const hubAt = new Set(h.branchStarts('coal', 'dist:coal').filter((st) => st.origin.type === 'hub').map((st) => `${h.xy(st.origin.k)}`));
+  assert.ok(!hubAt.has('2,4'), 'not right after the chest');
+  assert.ok(hubAt.has('2,3') && hubAt.has('3,3'), 'further along, yes');
+});
+
 test('router: a branch can leave an output chest the source already fills', () => {
   const g = grid(10, 10);
   // A Marble Kit line from (1,5) east into a new output chest at (3,5).
