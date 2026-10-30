@@ -110,7 +110,7 @@ The interface is available in the 11 languages the game ships with (`LANGUAGES` 
     {"id":5,"kind":"splitter","rot":0,"x":8,"y":8,"locked":true},
     {"id":6,"kind":"chest","level":1,"x":4,"y":3,"stock":["iron_ore","coal"],"filters":{"E":"iron_ore","S":"coal"},"locked":true}
   ],
-  "planner": {"targets": [{"item": "supply_iron", "rate": 1}], "timeSec": 30, "algorithm": "both", "maxLevel": {}, "recipeChoice": {}}
+  "planner": {"targets": [{"item": "supply_iron", "rate": 1}], "timeSec": 30, "algorithm": "both", "priority": "power", "maxLevel": {}, "recipeChoice": {}}
 }
 ```
 
@@ -121,6 +121,7 @@ The interface is available in the 11 languages the game ships with (`LANGUAGES` 
 - `x`, `y` is the top-left cell (the entry cell for undergrounds). y grows downward, so the bottom of the factory is the highest y.
 - `rot` is 0=N, 1=E, 2=S, 3=W: the travel direction for belts, undergrounds and splitters, the output side for distributors and the cellar, and the input side for supply stations. Stations and chests have no `rot`.
 - `planner.algorithm` is the layout search: `both` (the default when missing), `ga` (genetic) or `sa` (simulated annealing). Format 3 added it.
+- `planner.priority` is what the planner's routes save on: `power` (the default when missing) or `materials`. Older files simply lack it, so it needed no new format.
 - Entities placed by the planner have `"planned": true`. Stations also record which ingredient each input port takes when it isn't recipe order: `"inputs": ["iron_ingot", null]` (the planner always writes it; the station inspector's "Swap inputs" button, for two-ingredient recipes, writes the other order, and changing the recipe, type or level clears it). Planner chests have a `role` of `supply`, `output` or `hub`.
 - Files saved by earlier versions are migrated on load: a format 1 file of the factory floor (42×43) moves down 12 rows onto the 42×55 grid and gets the sections its floor had in `repaired`, placed zombie carousels are dropped (the factory's are fixed), a chest's `material` becomes `stock`, station `rot` is dropped, a station without `extensions` gets the one its recipe needs, a chest without `level` is Chest I, walls and columns become outside, and planner settings from before format 3 get `"algorithm": "both"`.
 

@@ -5,7 +5,7 @@ import { Layout, VOID, REPAIRABLE_SECTIONS, FORMAT_VERSION } from '../src/model.
 import { factoryFloor } from '../src/floor.js';
 import { N, E, S, RECIPES, CELLAR_ITEMS, GARDEN_ITEMS, supplyZoneDistance, stationVariants } from '../src/catalog.js';
 import { planProduction, chooseRecipe } from '../src/planner/production.js';
-import { RouteGrid, NO_CHEST_PORT, NO_CHEST_INPUT } from '../src/planner/router.js';
+import { RouteGrid, NO_CHEST_PORT, NO_CHEST_INPUT, COST, ROUTE_COSTS } from '../src/planner/router.js';
 import { Planner, stationInstances, applyResult } from '../src/planner/planner.js';
 import { GeneticPlanner } from '../src/planner/genetic.js';
 import { plannerSettings, searchesFor } from '../src/planner/panel.js';
@@ -451,6 +451,26 @@ test('planner: chests (no power) stand in for belts at turns and after undergrou
   // The Supply: Iron line itself carries no chest: only the ingots' lines do.
   assert.deepEqual(out.supplyIntoChests().chests, []);
   for (const c of pass) assert.notEqual(Object.values(c.filters)[0], 'supply_iron');
+});
+
+test('planner: prioritising build materials makes a chest in the line dearer than a belt', () => {
+  assert.equal(plannerSettings().priority, 'power');
+  assert.ok(ROUTE_COSTS.materials.passChest > COST.belt);
+  assert.equal(ROUTE_COSTS.power, COST);
+  const layout = Layout.fromJSON(fs.readFileSync(new URL('../factory.json', import.meta.url), 'utf8'));
+  const prod = plan1([{ item: 'supply_iron', rate: 1 }], { distributors: distributorsOf(layout) });
+  for (const seed of [1, 2, 3]) {
+    const pl = new Planner(layout, prod, { seed, priority: 'materials' });
+    pl.init();
+    for (let i = 0; i < 1500; i += 50) pl.step(50, i / 1500);
+    const res = pl.result();
+    if (res.failures.length) continue;
+    const out = layout.clone();
+    applyResult(out, res);
+    assert.deepEqual(layoutIssues(out), []);
+    return;
+  }
+  assert.fail('no seed routed everything');
 });
 
 test('planner: a recipe whose crop a distributor holds beats one needing a chest', () => {

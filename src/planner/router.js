@@ -92,6 +92,7 @@ const rev = (/** @type {number} */ d) => (d + 2) % 4;
 const SIDE_NAMES = ['N', 'E', 'S', 'W']; // chest filter keys by direction
 
 // Route costs: one unit per belt, extra for turns and special pieces.
+/** @typedef {typeof COST} RouteCosts */
 export const COST = {
   belt: 1,
   turn: 0.3,
@@ -106,6 +107,16 @@ export const COST = {
   passHub: 1,
 };
 
+// Route costs by planner priority (`PlannerOptions.priority`). `power` is the
+// default: chests use no power, so the router takes them freely in place of
+// belts. `materials` makes a chest in the line dearer than a belt (a chest takes
+// more to build), so it only goes where belts alone would do worse.
+/** @type {Record<'power' | 'materials', RouteCosts>} */
+export const ROUTE_COSTS = {
+  power: COST,
+  materials: { ...COST, passChest: 1.5 },
+};
+
 export const MAX_STATIONS_PER_BELT = 3;
 export const NO_CHEST_PORT = 1, NO_CHEST_INPUT = 2;
 const FREE = 0, BLOCKED = 1, BELT = 2, CHEST = 3;
@@ -116,11 +127,13 @@ export class RouteGrid {
   /**
    * @param {number} width
    * @param {number} height
+   * @param {RouteCosts} [cost]
    */
-  constructor(width, height) {
+  constructor(width, height, cost = COST) {
     const n = width * height;
     this.W = width;
     this.H = height;
+    this.cost = cost;
     this.floor = new Uint8Array(n);
     this.occ = new Uint8Array(n);       // FREE / BLOCKED / BELT / CHEST
     this.rot = new Int8Array(n).fill(-1);
@@ -268,7 +281,7 @@ export class RouteGrid {
       const [x, y] = this.xy(k);
       let best = Infinity;
       for (const [gx, gy] of hx) best = Math.min(best, Math.abs(gx - x) + Math.abs(gy - y));
-      return best * COST.belt * 0.999;
+      return best * this.cost.belt * 0.999;
     };
     /** @param {number} k @param {number} d @param {number} s */
     const node = (k, d, s) => (k * 4 + d) * 2 + s;
@@ -321,7 +334,7 @@ export class RouteGrid {
         if (!this.beltOk(k, r, allow, exempt)) continue;
         const nk = this.step(k, r);
         if (nk < 0) continue;
-        push(node(nk, r, 0), g + COST.belt + (r !== d ? COST.turn : 0), n, r);
+        push(node(nk, r, 0), g + this.cost.belt + (r !== d ? this.cost.turn : 0), n, r);
       }
       // Or a chest, which uses no power: where the line turns, or right after an
       // underground (straight on too). Filtered to the one side it leaves from, so
@@ -331,14 +344,14 @@ export class RouteGrid {
         for (const r of [d, (d + 1) % 4, (d + 3) % 4]) {
           if (r === d && this.action[n] < 4) continue;
           const nk = this.step(k, r);
-          if (nk >= 0) push(node(nk, r, 1), g + COST.passChest + (r !== d ? COST.turn : 0), n, 8 + r);
+          if (nk >= 0) push(node(nk, r, 1), g + this.cost.passChest + (r !== d ? this.cost.turn : 0), n, 8 + r);
         }
       }
       // Or an underground conveyor, entered from behind (not straight out of a
       // chest: chests only output onto belts).
       if (!straight && this._undergroundOk(k, d, allow)) {
         const nk = this.step(k, d, UNDERGROUND_LENGTH);
-        if (nk >= 0) push(node(nk, d, 0), g + COST.underground, n, 4 + d);
+        if (nk >= 0) push(node(nk, d, 0), g + this.cost.underground, n, 4 + d);
       }
     }
     return finish();
@@ -646,7 +659,7 @@ export class RouteGrid {
         if (nd.din !== nd.rot) {
           // Splitter at a turn: one side keeps the line, the other starts the branch.
           const side = (nd.din + 1) % 4 === nd.rot ? (nd.din + 3) % 4 : (nd.din + 1) % 4;
-          out.push({ k: this.step(nd.k, side), d: side, cost: COST.splitter, origin: { type: 'splitter', k: nd.k } });
+          out.push({ k: this.step(nd.k, side), d: side, cost: this.cost.splitter, origin: { type: 'splitter', k: nd.k } });
         }
         // Or a chest hub, at a turn or on a straight: the line carries on out of the side it
         // already left by (a chest only outputs onto a belt, so the next piece must be one,
@@ -656,16 +669,16 @@ export class RouteGrid {
         const next = nd.next.length === 1 ? nd.next[0] : null;
         const feedsBelt = next?.kind === 'belt' || (next?.kind === 'underground' && next.rot === nd.rot);
         const fedByChest = CHEST_NODES.has(nd.prev[0].kind);
-        if (this.reserved[nd.k] === -1 && !(this.noChest[nd.k] & NO_CHEST_INPUT) && feedsBelt && !fedByChest) hubStarts(nd.k, nd.din, nd.rot, COST.hub);
+        if (this.reserved[nd.k] === -1 && !(this.noChest[nd.k] & NO_CHEST_INPUT) && feedsBelt && !fedByChest) hubStarts(nd.k, nd.din, nd.rot, this.cost.hub);
       } else if (nd.kind === 'pass' && nd.prev.length === 1) {
         // A chest in the line: filter another side to the item and it's a hub.
-        hubStarts(nd.k, nd.din, nd.rot, COST.passHub);
+        hubStarts(nd.k, nd.din, nd.rot, this.cost.passHub);
       } else if (nd.kind === 'chest' && nd.prev.length) {
         // An output chest the source already fills: a belt leaving it takes items out too.
         for (let side = 0; side < 4; side++) {
           const s = this.step(nd.k, side);
           if (s >= 0 && this.occ[s] === FREE && this.reserved[s] === -1) {
-            out.push({ k: s, d: side, cost: COST.passHub, straight: true, origin: { type: 'existingHub', k: nd.k } });
+            out.push({ k: s, d: side, cost: this.cost.passHub, straight: true, origin: { type: 'existingHub', k: nd.k } });
           }
         }
       } else if (nd.kind === 'hub') {
@@ -749,7 +762,7 @@ export class RouteGrid {
         for (let d = 0; d < 4; d++) {
           const s = this.step(q, d);
           if (s >= 0 && this.occ[s] === FREE) {
-            out.push({ k: s, d, cost: COST.chest, straight: true, origin: { type: 'newChest', k: q } });
+            out.push({ k: s, d, cost: this.cost.chest, straight: true, origin: { type: 'newChest', k: q } });
           }
         }
       }

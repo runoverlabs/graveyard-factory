@@ -20,7 +20,7 @@ import { t, getLanguage } from '../i18n.js';
 
 const TIME_CHOICES = [10, 30, 60, 180, 600];
 /** @type {import('../model.js').PlannerSettings} */
-const DEFAULT_SETTINGS = { targets: [], timeSec: 30, algorithm: /** @type {'both' | 'ga' | 'sa'} */ ('both'), maxLevel: {}, recipeChoice: {} };
+const DEFAULT_SETTINGS = { targets: [], timeSec: 30, algorithm: /** @type {'both' | 'ga' | 'sa'} */ ('both'), priority: /** @type {'power' | 'materials'} */ ('power'), maxLevel: {}, recipeChoice: {} };
 // Neither search wins on every plan (docs/INTERNALS.md "Search"), so by default both run, each in its own worker, and the better result is kept.
 /** @type {Record<string, ('ga' | 'sa')[]>} */
 const SEARCHES = { both: ['sa', 'ga'], ga: ['ga'], sa: ['sa'] };
@@ -116,7 +116,7 @@ export class PlannerPanel {
         type: 'start',
         layout,
         production,
-        options: { timeMs: this.settings.timeSec * 1000, seed: Math.floor(Math.random() * 1e9), algorithm },
+        options: { timeMs: this.settings.timeSec * 1000, seed: Math.floor(Math.random() * 1e9), algorithm, priority: this.settings.priority },
         initial,
       }));
     }
@@ -217,7 +217,11 @@ export class PlannerPanel {
     const time = selectEl(TIME_CHOICES.map((t) => [t, `${t} s`]), s.timeSec, (v) => this.update({ timeSec: +v }));
     const method = selectEl([['both', t('planner.searchBoth')], ['ga', t('planner.searchGenetic')], ['sa', t('planner.searchAnnealing')]], s.algorithm,
       (v) => this.update({ algorithm: v === 'sa' || v === 'ga' ? v : 'both' }));
-    el.append(h('h3', {}, t('planner.options')), field(t('planner.searchTime'), time), field(t('planner.searchMethod'), method));
+    // Chests use no power but take more to build than a belt (docs/INTERNALS.md "Search").
+    const priority = selectEl([['power', t('planner.priorityPower')], ['materials', t('planner.priorityMaterials')]], s.priority,
+      (v) => this.update({ priority: v === 'materials' ? v : 'power' }));
+    priority.title = t('planner.priorityTitle');
+    el.append(h('h3', {}, t('planner.options')), field(t('planner.searchTime'), time), field(t('planner.searchMethod'), method), field(t('planner.priority'), priority));
     for (const [type, def] of /** @type {[StationType, StationDef][]} */ (Object.entries(STATIONS))) {
       const max = s.maxLevel[type] ?? Math.max(...def.levels);
       el.append(field(t('planner.upTo', { name: def.name }), selectEl(def.levels.map((l) => [l, ROMAN[l]]), max,

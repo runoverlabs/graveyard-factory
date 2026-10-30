@@ -26,6 +26,7 @@ import { t } from './i18n.js';
  * @property {Target[]} [targets]
  * @property {number} [timeSec]
  * @property {'both' | 'ga' | 'sa'} [algorithm] layout search: both at once (the better result kept), genetic or simulated annealing
+ * @property {'power' | 'materials'} [priority] what the planner's routes save on: power (chests in place of belts) or build materials (few chests)
  * @property {Partial<Record<StationType, number>>} [maxLevel]
  * @property {Record<string, string>} [recipeChoice]
  */
