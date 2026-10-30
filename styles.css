@@ -113,6 +113,10 @@ input[type=text], input[type=number], select, textarea {
 
 .help ul { margin: 0; padding-left: 16px; color: var(--muted); }
 .stats .over { color: var(--error); }
+.stats .materials-head { grid-column: 1 / -1; margin-top: 6px; color: var(--text); }
+.stats .materials-none { grid-column: 1 / -1; }
+.material { display: flex; align-items: center; gap: 4px; }
+.material img { width: 18px; height: 18px; image-rendering: pixelated; }
 .perk { display: flex; align-items: center; gap: 4px; }
 .perk img { width: 20px; height: 20px; image-rendering: pixelated; }
 .sections { display: flex; flex-direction: column; gap: 2px; }

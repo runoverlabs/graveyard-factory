@@ -1019,6 +1019,9 @@ export class Editor {
       [t('stats.distributors'), byKind('distributor') + byKind('cellar')],
     ];
     const p = l.powerSupply();
+    // Most needed first, then by name.
+    const materials = Object.entries(l.buildMaterials())
+      .sort(([a, x], [b, y]) => y - x || (ITEM_BY_ID[a]?.name ?? a).localeCompare(ITEM_BY_ID[b]?.name ?? b));
     const beltMaster = /** @type {HTMLInputElement} */ (h('input', { type: 'checkbox' }));
     beltMaster.checked = l.beltMaster;
     beltMaster.addEventListener('change', () => this.mutate(() => { this.layout.beltMaster = beltMaster.checked; }));
@@ -1030,6 +1033,11 @@ export class Editor {
       h('label', { class: 'perk', title: t('stats.beltMasterTitle') }, beltMaster, h('img', { src: BELT_MASTER_ICON, alt: '' }), t('stats.beltMaster')),
       h('span', {}),
       ...rows.flatMap(([k, v]) => [h('span', {}, k), h('b', {}, String(v))]),
+      h('span', { class: 'materials-head', title: t('stats.materialsTitle') }, t('stats.materials')),
+      ...(materials.length ? materials.flatMap(([id, n]) => {
+        const item = ITEM_BY_ID[id];
+        return [h('span', { class: 'material' }, item?.icon ? h('img', { src: item.icon, alt: '' }) : null, item?.name ?? id), h('b', {}, String(n))];
+      }) : [h('span', { class: 'materials-none' }, t('stats.materialsNone'))]),
     );
   }
 

@@ -82,7 +82,9 @@
  * @property {Record<number, Record<string, Sprite>>} [sprites] level -> variant -> art
  */
 
-/** @typedef {{ name: string, station: StationType, slot: 'small' | 'big', icon?: string }} Extension */
+/** Build materials: item id -> count. @typedef {Record<string, number>} Materials */
+
+/** @typedef {{ name: string, station: StationType, slot: 'small' | 'big', build: Materials, icon?: string }} Extension */
 
 /**
  * A section of the factory floor (one of the game's conveyor build areas).

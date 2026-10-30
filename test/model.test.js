@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Layout, FLOOR, VOID, REPAIRABLE_SECTIONS, FORMAT_VERSION } from '../src/model.js';
 import {
-  N, E, S, W, RECIPES, ITEM_BY_ID, STATIONS, EXTENSIONS, CONVEYOR_ART, CHEST_LEVELS, TALENTS, BELT_MASTER_ICON, POWER_ICON, FLOOR_SECTIONS, FLOOR_GRID, FACTORY_DISTRIBUTORS, FACTORY_CELLAR, CELLAR_ITEMS, stationVariants, extensionsFor, extensionArt,
+  N, E, S, W, RECIPES, ITEM_BY_ID, STATIONS, EXTENSIONS, BUILD_COST, PORTER, CONVEYOR_ART, CHEST_LEVELS, TALENTS, BELT_MASTER_ICON, POWER_ICON, FLOOR_SECTIONS, FLOOR_GRID, FACTORY_DISTRIBUTORS, FACTORY_CELLAR, CELLAR_ITEMS, stationVariants, extensionsFor, extensionArt,
 } from '../src/catalog.js';
 import { factoryFloor, DEFAULT_REPAIRED } from '../src/floor.js';
 
@@ -491,6 +491,36 @@ test('factory power: 1 per station and belt, 2 per underground, none for chests'
   assert.equal(l.power(), 3);
   l.add({ kind: 'underground', x: 1, y: 5, rot: E });
   assert.equal(l.power(), 5);
+});
+
+test('build materials: every buildable piece has a cost in known items, and a layout adds them up', () => {
+  for (const [type, s] of Object.entries(STATIONS)) {
+    for (const level of s.levels) assert.ok(BUILD_COST.station[type][level], `${type} ${level}`);
+  }
+  for (const level of Object.keys(CHEST_LEVELS)) assert.ok(BUILD_COST.chest[level], `chest ${level}`);
+  const all = [
+    BUILD_COST.belt, BUILD_COST.underground, BUILD_COST.splitter, BUILD_COST.supply_station, BUILD_COST.porter,
+    ...Object.values(BUILD_COST.chest), ...Object.values(BUILD_COST.station).flatMap((l) => Object.values(l)),
+    ...Object.values(EXTENSIONS).map((x) => x.build),
+  ];
+  for (const m of all) for (const [id, n] of Object.entries(m)) assert.ok(ITEM_BY_ID[id] && n > 0, id);
+  assert.equal(BUILD_COST.porter, PORTER.build);
+
+  const l = Layout.blank(16, 10);
+  assert.deepEqual(l.buildMaterials(), {});
+  l.add({ kind: 'station', type: 'smithy', level: 2, x: 1, y: 1, extensions: ['bellows'] });
+  l.add({ kind: 'belt', x: 5, y: 1, rot: E });
+  l.add({ kind: 'belt', x: 6, y: 1, rot: E });
+  l.add({ kind: 'underground', x: 1, y: 5, rot: E });
+  l.add({ kind: 'splitter', x: 8, y: 3, rot: E });
+  l.add({ kind: 'chest', x: 7, y: 1, level: 2 });
+  l.add({ kind: 'distributor', x: 0, y: 9, rot: N, material: 'coal' }); // fixed: not built
+  assert.deepEqual(l.buildMaterials(), {
+    reinforced_beam: 6, steel_screws: 12, engineering_details: 4, // smithy II
+    leather_scroll: 4, iron_detail: 2, wooden_plank: 4, // bellows
+    bronze_gear: 2 + 4 + 3 + 4, fabric: 2 + 2 + 1, // 2 belts, underground, splitter, chest II
+    advanced_detail: 4, wooden_joint: 2, // chest II
+  });
 });
 
 test('power supply: 5 fixed carousels, 20 zombies, 10 power each (20 with Belt Master)', async () => {

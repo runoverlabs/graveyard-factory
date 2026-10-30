@@ -3,7 +3,7 @@
 // UI-independent so the planner can reuse it (also runs under Node for tests).
 
 import {
-  DIRS, STATIONS, ENTITY_KINDS, RECIPE_BY_ID, ITEM_BY_ID, EXTENSIONS, CHEST_LEVELS, POWER_COST, ZOMBIE_POWER, stationVariants, defaultVariant,
+  DIRS, STATIONS, ENTITY_KINDS, RECIPE_BY_ID, ITEM_BY_ID, EXTENSIONS, CHEST_LEVELS, POWER_COST, BUILD_COST, ZOMBIE_POWER, stationVariants, defaultVariant,
   BELT_ACCEPTS_FROM_SIDES, UNDERGROUND_GAP_MUST_BE_FLOOR, UNDERGROUND_GAP_KINDS, DISTRIBUTOR_FRONT_KINDS, FACTORY_DISTRIBUTORS, FACTORY_GARDEN_DISTRIBUTORS, GARDEN_ITEMS, portersFor, FACTORY_CELLAR, CELLAR_ITEMS, FLOOR_SECTIONS, FLOOR_GRID, FLOOR_HOLES, entityCells, recipesFor, isSupplyItem,
 } from './catalog.js';
 import { t } from './i18n.js';
@@ -13,6 +13,7 @@ import { t } from './i18n.js';
 /** @typedef {import('./types.js').EntitySpec} EntitySpec */
 /** @typedef {import('./types.js').StationType} StationType */
 /** @typedef {import('./types.js').Terrain} Terrain */
+/** @typedef {import('./types.js').Materials} Materials */
 /** @typedef {import('./types.js').PortDef} PortDef */
 /** @typedef {import('./types.js').Port} Port */
 /** @typedef {import('./types.js').Issue} Issue */
@@ -439,6 +440,14 @@ export class Layout {
     return powerOf(this.entities);
   }
 
+  /**
+   * Materials needed to build the layout's pieces (BUILD_COST, extensions).
+   * @returns {Materials}
+   */
+  buildMaterials() {
+    return buildMaterials(this.entities);
+  }
+
   /** Power supply: the factory's carousels against the layout's power use. */
   powerSupply() {
     return powerSupply(this.power(), this.beltMaster);
@@ -803,6 +812,27 @@ export function powerSupply(used, beltMaster) {
  */
 export function powerOf(entities) {
   return entities.reduce((n, e) => n + (POWER_COST[e.kind] ?? 0), 0);
+}
+
+/**
+ * Materials a set of pieces is built from: each piece's BUILD_COST (stations and
+ * chests by level) plus a station's fitted extensions. Fixed pieces aren't built.
+ * @param {EntitySpec[]} entities
+ * @returns {Materials}
+ */
+export function buildMaterials(entities) {
+  /** @type {Materials} */
+  const total = {};
+  /** @param {Materials | undefined} m */
+  const add = (m) => { for (const [id, n] of Object.entries(m ?? {})) total[id] = (total[id] ?? 0) + n; };
+  for (const e of entities) {
+    if (e.kind === 'station') {
+      add(e.type && BUILD_COST.station[e.type]?.[e.level ?? 1]);
+      for (const x of e.extensions ?? []) add(EXTENSIONS[x]?.build);
+    } else if (e.kind === 'chest') add(BUILD_COST.chest[e.level ?? 1]);
+    else if (e.kind in BUILD_COST) add(BUILD_COST[/** @type {'belt' | 'underground' | 'splitter' | 'supply_station' | 'porter'} */ (e.kind)]);
+  }
+  return total;
 }
 
 /**

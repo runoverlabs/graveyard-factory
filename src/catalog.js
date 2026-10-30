@@ -12,6 +12,7 @@
 /** @typedef {import('./types.js').StationVariant} StationVariant */
 /** @typedef {import('./types.js').StationDef} StationDef */
 /** @typedef {import('./types.js').Item} Item */
+/** @typedef {import('./types.js').Materials} Materials */
 /** @typedef {import('./types.js').Recipe} Recipe */
 /** @typedef {import('./types.js').Extension} Extension */
 /** @typedef {import('./types.js').Sprite} Sprite */
@@ -90,7 +91,8 @@ const PRODUCT_NAMES = {
 /** @type {Item[]} */
 export const PRODUCTS = Object.entries(PRODUCT_NAMES).map(([id, name]) => ({ id, name, color: hashColor(id) }));
 
-// Other items that can sit in chests but aren't used by factory recipes (yet).
+// Other items that can sit in chests but aren't used by factory recipes (yet),
+// such as the materials pieces are built from (BUILD_COST, EXTENSIONS).
 const OTHER_NAMES = {
   wood_wedge: 'Wood Wedge', wooden_plank: 'Wooden Plank', oiled_plank: 'Oiled Plank',
   reinforced_plank: 'Reinforced Plank', wooden_beam: 'Wooden Beam', piece_of_stone: 'Piece of Stone',
@@ -98,6 +100,8 @@ const OTHER_NAMES = {
   polished_bronze: 'Polished Bronze', bronze_gear: 'Bronze Gear', iron_nails: 'Iron Nails',
   iron_detail: 'Iron Detail', advanced_detail: 'Advanced Detail',
   steel_detail: 'Steel Detail', engineering_details: 'Engineering Details', steel_screws: 'Steel Screws',
+  reinforced_beam: 'Reinforced Beam', wooden_joint: 'Wooden Joint', carved_wood: 'Carved Wood',
+  polished_stone: 'Polished Stone', stick: 'Stick', leather_scroll: 'Leather Scroll',
 };
 /** @type {Item[]} */
 export const OTHER_ITEMS = Object.entries(OTHER_NAMES).map(([id, name]) => ({ id, name, color: hashColor(id) }));
@@ -280,23 +284,24 @@ export const defaultVariant = (type) => STATIONS[type]?.defaultVariant ?? DEFAUL
 
 // Station extensions (the game's workbench extensions). Each station has one
 // small and one big slot, so it takes at most one extension of each size. The
-// icon is the game's build icon.
+// icon is the game's build icon; `build` is what it's built from (the game's
+// building `needItems`; the Stove lists nothing).
 /** @type {Extension['slot'][]} */
 export const EXTENSION_SLOTS = ['small', 'big'];
 /** @type {Record<string, Extension>} */
 export const EXTENSIONS = {
-  bellows: { name: 'Bellows', station: 'smithy', slot: 'small' },
-  hammer: { name: 'Hammer', station: 'smithy', slot: 'big' },
-  press: { name: 'Press', station: 'smithy', slot: 'big' },
-  grindstone: { name: 'Grindstone', station: 'smithy', slot: 'big' },
-  auto_hammer: { name: 'Auto-hammer', station: 'assembly_bench', slot: 'small' },
-  spinning_wheel: { name: 'Spinning wheel', station: 'assembly_bench', slot: 'small' },
-  drill_press: { name: 'Drill press', station: 'assembly_bench', slot: 'big' },
-  sewing_machine: { name: 'Sewing machine', station: 'assembly_bench', slot: 'big' },
-  lathe: { name: 'Lathe', station: 'assembly_bench', slot: 'big' },
-  millstone: { name: 'Millstone', station: 'kitchen', slot: 'small' },
-  sealing_machine: { name: 'Sealing machine', station: 'kitchen', slot: 'small' },
-  stove: { name: 'Stove', station: 'kitchen', slot: 'big' },
+  bellows: { name: 'Bellows', station: 'smithy', slot: 'small', build: { leather_scroll: 4, iron_detail: 2, wooden_plank: 4 } },
+  hammer: { name: 'Hammer', station: 'smithy', slot: 'big', build: { wooden_beam: 2, iron_detail: 2, iron_ingot: 1 } },
+  press: { name: 'Press', station: 'smithy', slot: 'big', build: { engineering_details: 2, steel_detail: 4, wooden_beam: 2 } },
+  grindstone: { name: 'Grindstone', station: 'smithy', slot: 'big', build: { engineering_details: 2, steel_detail: 4, piece_of_stone: 1 } },
+  auto_hammer: { name: 'Auto-hammer', station: 'assembly_bench', slot: 'small', build: { bronze_gear: 2, iron_detail: 6, iron_ingot: 2 } },
+  spinning_wheel: { name: 'Spinning wheel', station: 'assembly_bench', slot: 'small', build: { bronze_gear: 2, wooden_plank: 4, iron_nails: 4 } },
+  drill_press: { name: 'Drill press', station: 'assembly_bench', slot: 'big', build: { bronze_gear: 2, iron_detail: 4, wooden_beam: 2 } },
+  sewing_machine: { name: 'Sewing machine', station: 'assembly_bench', slot: 'big', build: { wooden_joint: 4, steel_screws: 8, engineering_details: 4 } },
+  lathe: { name: 'Lathe', station: 'assembly_bench', slot: 'big', build: { engineering_details: 4, steel_screws: 8, carved_wood: 2 } },
+  millstone: { name: 'Millstone', station: 'kitchen', slot: 'small', build: { polished_stone: 2, stick: 4, iron_detail: 2 } },
+  sealing_machine: { name: 'Sealing machine', station: 'kitchen', slot: 'small', build: { advanced_detail: 4, iron_ingot: 1, wooden_plank: 2 } },
+  stove: { name: 'Stove', station: 'kitchen', slot: 'big', build: {} },
 };
 for (const [id, x] of Object.entries(EXTENSIONS)) x.icon = `assets/extensions/icons/${id}.webp`;
 /** @type {(type: StationType) => string[]} */
@@ -507,7 +512,7 @@ export const CHEST_ART_OFFSET = [-4, -32];
 // "Supply: ..." items are delivered to a supply station rather than a chest.
 // The planner pulls supply stations (and the makers of supply items) towards this row segment.
 // The Zombie Supply Porter (1 wide, 2 high; from the user): one per 3 supply stations, built
-// from `PORTER.build`. The planner puts them at x0..x1 on row `y` (the top cell; it also takes
+// from `PORTER.build` (the game's `zombie_conveyor_transporter_station_p`). The planner puts them at x0..x1 on row `y` (the top cell; it also takes
 // the row below). It uses no power (from the user).
 export const PORTER = { stationsEach: 3, row: { x0: 23, x1: 29, y: 24 }, build: { wooden_plank: 4, iron_nails: 8, iron_detail: 2 } };
 /** @type {(supplyStations: number) => number} */
@@ -525,6 +530,45 @@ export const isSupplyItem = (id) => id.startsWith('supply_');
 // Chests and the Zombie Supply Porter use none (from the user).
 export const POWER_COST = { station: 1, belt: 1, underground: 2 };
 export const POWER_ICON = 'assets/ui/power.webp';
+
+// What each piece is built from (item id -> count), from the game's building
+// definitions (`needItems` of `conveyor_cell_cp`, `conveyor_<station>_t<level>_place_p`
+// and so on). Each station and chest level has its own build, not an upgrade of
+// the level below. Extensions are in EXTENSIONS; the fixed pieces (distributors,
+// the cellar) aren't built.
+/**
+ * @type {{
+ *   belt: Materials, underground: Materials, splitter: Materials, supply_station: Materials, porter: Materials,
+ *   chest: Record<number, Materials>, station: Record<StationType, Record<number, Materials>>,
+ * }}
+ */
+export const BUILD_COST = {
+  belt: { bronze_gear: 1, fabric: 1 },
+  underground: { bronze_gear: 4, fabric: 2 },
+  splitter: { bronze_gear: 3, fabric: 1 },
+  supply_station: { bronze_gear: 4, iron_detail: 6, wooden_beam: 2 },
+  porter: PORTER.build,
+  chest: {
+    1: { bronze_gear: 2, bronze_detail: 4, wooden_plank: 2 },
+    2: { bronze_gear: 4, advanced_detail: 4, wooden_joint: 2 },
+  },
+  station: {
+    assembly_bench: {
+      1: { reinforced_plank: 6, bronze_gear: 4, bronze_detail: 4 },
+      2: { reinforced_beam: 6, bronze_gear: 8, advanced_detail: 6 },
+      3: { wooden_joint: 6, steel_screws: 12, engineering_details: 4 },
+    },
+    smithy: {
+      1: { reinforced_plank: 6, bronze_detail: 4, bronze_gear: 4 },
+      2: { reinforced_beam: 6, steel_screws: 12, engineering_details: 4 },
+    },
+    kitchen: {
+      1: { reinforced_plank: 6, bronze_gear: 4, bronze_detail: 4 },
+      2: { reinforced_beam: 4, bronze_gear: 8, advanced_detail: 8 },
+    },
+    bioreactor: { 1: { glass: 10, bronze_gear: 8, advanced_detail: 6 } },
+  },
+};
 
 // Power comes from zombies on the factory's zombie carousels. They're fixed
 // (outside the floor plan, none can be built), 5 of them with 4 zombies each, so
