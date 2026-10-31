@@ -5,7 +5,7 @@ import { Layout, VOID, REPAIRABLE_SECTIONS, FORMAT_VERSION } from '../src/model.
 import { factoryFloor } from '../src/floor.js';
 import { N, E, S, RECIPES, CELLAR_ITEMS, GARDEN_ITEMS, supplyZoneDistance, stationVariants } from '../src/catalog.js';
 import { planProduction, chooseRecipe } from '../src/planner/production.js';
-import { RouteGrid, NO_CHEST_PORT, NO_CHEST_INPUT } from '../src/planner/router.js';
+import { RouteGrid, NO_CHEST_PORT, NO_CHEST_INPUT, COST, ROUTE_COSTS } from '../src/planner/router.js';
 import { Planner, stationInstances, applyResult } from '../src/planner/planner.js';
 import { GeneticPlanner } from '../src/planner/genetic.js';
 import { plannerSettings, searchesFor } from '../src/planner/panel.js';
@@ -184,6 +184,33 @@ test('router: branches leave a line from chest hubs at turns, before turns and f
   // Never a hub against a station input.
   g.noChest[g.key(1, 5)] = NO_CHEST_INPUT;
   assert.deepEqual([...hubs()].filter((h) => h.startsWith('1,5')), []);
+});
+
+test('router: a chest never hands items to another chest (chests only output onto belts)', () => {
+  // Arriving at (2,1) moving east, the cheapest way into the chest at (2,0) would be a
+  // chest in the line turning north: it must be a belt.
+  const g = grid(5, 3);
+  const C = g.key(2, 0);
+  g.addChestAt(C);
+  g.net.set(C, { k: C, kind: 'chest', item: 'coal', next: [], prev: [], up: new Set(), down: new Set(['final:coal']) });
+  const targets = new Map();
+  g.chestTarget(C, targets);
+  const res = g.route({ starts: [{ k: g.key(0, 1), d: E, cost: 0, origin: { type: 'port' } }], targets, allow: new Set(), goalCells: [C] });
+  assert.equal(res.goal.k, C);
+  assert.ok(res.steps.at(-1).act < 4, 'the piece before the chest is a belt');
+  // A belt right after a chest in the line doesn't become a hub, which the chest couldn't feed.
+  const h = grid(10, 10);
+  h.apply({ start: { k: h.key(1, 5), d: E, cost: 0, origin: { type: 'port' } }, goal: { k: h.key(5, 3), d: E, type: 'port' }, steps: [
+    { k: h.key(1, 5), din: E, act: E },
+    { k: h.key(2, 5), din: E, act: 8 + N },
+    { k: h.key(2, 4), din: N, act: N },
+    { k: h.key(2, 3), din: N, act: E },
+    { k: h.key(3, 3), din: E, act: E },
+    { k: h.key(4, 3), din: E, act: E },
+  ] }, 'coal', 'dist:coal', 's0i0');
+  const hubAt = new Set(h.branchStarts('coal', 'dist:coal').filter((st) => st.origin.type === 'hub').map((st) => `${h.xy(st.origin.k)}`));
+  assert.ok(!hubAt.has('2,4'), 'not right after the chest');
+  assert.ok(hubAt.has('2,3') && hubAt.has('3,3'), 'further along, yes');
 });
 
 test('router: a branch can leave an output chest the source already fills', () => {
@@ -424,6 +451,26 @@ test('planner: chests (no power) stand in for belts at turns and after undergrou
   // The Supply: Iron line itself carries no chest: only the ingots' lines do.
   assert.deepEqual(out.supplyIntoChests().chests, []);
   for (const c of pass) assert.notEqual(Object.values(c.filters)[0], 'supply_iron');
+});
+
+test('planner: prioritising build materials makes a chest in the line dearer than a belt', () => {
+  assert.equal(plannerSettings().priority, 'power');
+  assert.ok(ROUTE_COSTS.materials.passChest > COST.belt);
+  assert.equal(ROUTE_COSTS.power, COST);
+  const layout = Layout.fromJSON(fs.readFileSync(new URL('../factory.json', import.meta.url), 'utf8'));
+  const prod = plan1([{ item: 'supply_iron', rate: 1 }], { distributors: distributorsOf(layout) });
+  for (const seed of [1, 2, 3]) {
+    const pl = new Planner(layout, prod, { seed, priority: 'materials' });
+    pl.init();
+    for (let i = 0; i < 1500; i += 50) pl.step(50, i / 1500);
+    const res = pl.result();
+    if (res.failures.length) continue;
+    const out = layout.clone();
+    applyResult(out, res);
+    assert.deepEqual(layoutIssues(out), []);
+    return;
+  }
+  assert.fail('no seed routed everything');
 });
 
 test('planner: a recipe whose crop a distributor holds beats one needing a chest', () => {

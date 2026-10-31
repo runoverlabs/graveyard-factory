@@ -7,7 +7,7 @@
 // penalty per connection that could not be routed.
 
 import { STATIONS, RECIPE_BY_ID, DIRS, ENTITY_KINDS, CELLAR_ITEMS, GARDEN_ITEMS, entityCells, stationDims, stationVariants, isSupplyItem, supplyZoneDistance, PORTER, portersFor } from '../catalog.js';
-import { RouteGrid, DX, DY, COST, NO_CHEST_PORT, NO_CHEST_INPUT } from './router.js';
+import { RouteGrid, DX, DY, ROUTE_COSTS, NO_CHEST_PORT, NO_CHEST_INPUT } from './router.js';
 import { powerOf, powerSupply } from '../model.js';
 
 /** @typedef {import('../types.js').StationType} StationType */
@@ -42,6 +42,7 @@ import { powerOf, powerSupply } from '../model.js';
  * @property {number} [failCost] penalty per unrouted connection
  * @property {number} [overPowerCost] penalty per point of power over the maximum
  * @property {number} [supplyCornerCost] extra cost per cell from the supply zone
+ * @property {'power' | 'materials'} [priority] what the routes save on: power (chests in place of belts) or build materials (few chests)
  * @property {number} [timeMs] search budget (used by the worker)
  * @property {boolean} [earlyStop] false: route every candidate to the end (see Planner.evaluate)
  * @property {'sa' | 'ga'} [algorithm] annealing (Planner) or genetic (GeneticPlanner)
@@ -195,6 +196,7 @@ export class Planner {
     this.production = production;
     this.options = options;
     this.random = rng(options.seed ?? 1);
+    this.costs = ROUTE_COSTS[options.priority ?? 'power'] ?? ROUTE_COSTS.power;
     this.stations = stationInstances(production);
     // Power the kept pieces already use.
     this.basePower = powerOf(layout.entities);
@@ -212,7 +214,7 @@ export class Planner {
 
   _buildBase() {
     const l = this.layout;
-    const g = new RouteGrid(l.width, l.height);
+    const g = new RouteGrid(l.width, l.height, this.costs);
     /** @type {Map<string, { k: number, d: number, hub?: boolean }>} distributor output access cell by material */
     this.distributors = new Map();
     /** @type {{ k: number, d: number } | null} the cellar's output access cell */
@@ -578,7 +580,7 @@ export class Planner {
    */
   _evaluate(placements, maxFailed = Infinity) {
     const b = this.base;
-    const g = new RouteGrid(b.W, b.H);
+    const g = new RouteGrid(b.W, b.H, this.costs);
     for (const f of /** @type {const} */ (['floor', 'occ', 'rot', 'gap', 'body', 'reserved', 'noChest', 'chestFeeds', 'distFront'])) g[f].set(b[f]);
 
     // The cellar's belt and sorting chest, with the chest's three outer sides
@@ -730,7 +732,7 @@ export class Planner {
         allow.add(src.n);
         // Or a chest hub right on the output, worth it when the source feeds several consumers.
         if (!sink.final && !sideOutput && g.chestOk(src.n, src.d, allow, true)) {
-          const hubCost = e.buffer || (fanout.get(src.id) ?? 1) > 1 ? 1 : COST.hub;
+          const hubCost = e.buffer || (fanout.get(src.id) ?? 1) > 1 ? 1 : g.cost.hub;
           for (let d = 0; d < 4; d++) {
             if (d === rev(src.d)) continue;
             starts.push({ k: g.step(src.n, d), d, cost: hubCost, straight: true, origin: { type: 'portHub', k: src.n } });
