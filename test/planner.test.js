@@ -427,6 +427,15 @@ test('planner: garden distributors with no crop are set to the crops the plan ne
   assert.deepEqual(out.entities.filter((e) => e.garden).map((e) => e.material), ['onion_1', '', '']);
 });
 
+test('planner: flax for fabric comes from a garden distributor', () => {
+  const layout = Layout.fromJSON(fs.readFileSync(new URL('../factory.json', import.meta.url), 'utf8'));
+  layout.setRepaired([...layout.repaired, 1]);
+  const { res, out, prod } = runPlan(layout, [{ item: 'fabric', rate: 1 }], 300, 1, { distributors: new Set(['flax']) });
+  assert.equal(prod.supply.flax.source, 'distributor');
+  assert.deepEqual(res.gardenStock.map(([, item]) => item), ['flax']);
+  assert.deepEqual(layoutIssues(out), []);
+});
+
 test('planner: a Zombie Supply Porter for every 3 supply stations, along 23,24 to 29,24', () => {
   const layout = Layout.fromJSON(fs.readFileSync(new URL('../factory.json', import.meta.url), 'utf8'));
   const targets = [{ item: 'supply_iron', rate: 1 }, { item: 'supply_cutlery_1', rate: 1 }, { item: 'supply_furniture_1', rate: 1 }, { item: 'supply_clothes_1', rate: 1 }];
