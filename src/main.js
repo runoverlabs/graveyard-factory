@@ -2,6 +2,7 @@
 import { Editor } from './editor.js';
 import { initChangelog } from './changelog-ui.js';
 import { initWelcome } from './welcome.js';
+import { initPanels } from './panels.js';
 import { pickLanguage, setLanguage } from './i18n.js';
 import { translateDocument, initLanguageSelect } from './i18n-dom.js';
 
@@ -26,3 +27,4 @@ initLanguageSelect(document, async (code) => {
   editor.relocalize();
 });
 initChangelog(document, initWelcome(document));
+initPanels(document);
