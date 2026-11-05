@@ -14,6 +14,7 @@ export default {
   'topbar.redoTitle': 'Yinele (Ctrl+Y)',
   'topbar.fit': 'Sığdır',
   'topbar.toolsPanel': 'Araçlar',
+  'topbar.more': 'Daha fazla',
   'topbar.fitTitle': 'Yerleşimi görünüme sığdır (0)',
   'topbar.language': 'Dil',
   'topbar.whatsNew': 'Yenilikler',

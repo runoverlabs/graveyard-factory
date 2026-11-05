@@ -14,6 +14,7 @@ export default {
   'topbar.redoTitle': 'Wiederholen (Strg+Y)',
   'topbar.fit': 'Anpassen',
   'topbar.toolsPanel': 'Werkzeuge',
+  'topbar.more': 'Mehr',
   'topbar.fitTitle': 'Layout einpassen (0)',
   'topbar.language': 'Sprache',
   'topbar.whatsNew': 'Neuigkeiten',

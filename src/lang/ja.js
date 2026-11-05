@@ -14,6 +14,7 @@ export default {
   'topbar.redoTitle': 'やり直す (Ctrl+Y)',
   'topbar.fit': '全体表示',
   'topbar.toolsPanel': 'ツール',
+  'topbar.more': 'その他',
   'topbar.fitTitle': 'レイアウト全体を表示 (0)',
   'topbar.language': '言語',
   'topbar.whatsNew': '更新情報',

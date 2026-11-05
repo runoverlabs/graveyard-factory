@@ -1,5 +1,6 @@
 // @ts-check
-// On narrow screens the two side panels become drawers over the map (styles.css), opened from the top bar.
+// On narrow screens the two side panels become drawers over the map, opened from the top bar, and the
+// top bar folds its less used controls into a More menu (styles.css).
 
 /** Keep in step with the max-width of the drawer media query in styles.css. */
 export const NARROW_QUERY = '(max-width: 1100px)';
@@ -10,8 +11,29 @@ export function initPanels(doc) {
   const main = /** @type {HTMLElement} */ (doc.querySelector('.main'));
   const buttons = /** @type {HTMLButtonElement[]} */ ([...doc.querySelectorAll('[data-panel]')]);
 
+  // The More menu holds the top bar controls that don't fit on a narrow screen (styles.css).
+  const topbar = doc.querySelector('.topbar');
+  const more = doc.querySelector('.more-toggle');
+  /** @param {boolean} open */
+  const showMenu = (open) => {
+    topbar.classList.toggle('show-menu', open);
+    more.setAttribute('aria-expanded', String(open));
+  };
+  more.addEventListener('click', () => showMenu(!topbar.classList.contains('show-menu')));
+  // Clicks outside the menu close it; the menu's own controls (checkboxes, name, language) keep it open.
+  doc.addEventListener('pointerdown', (ev) => {
+    const target = /** @type {Element} */ (ev.target);
+    if (!target.closest('#topbar-menu, .more-toggle, #canvas-wrap')) showMenu(false); // the map's own handler is below
+  }, true);
+  doc.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') showMenu(false); });
+  // Its buttons (Clear, Import, Export, Copy link, What's new) do one thing, so the menu closes after them.
+  doc.getElementById('topbar-menu').addEventListener('click', (ev) => {
+    if (/** @type {Element} */ (ev.target).closest('button')) showMenu(false);
+  });
+
   /** @param {string} name '' closes both */
   const show = (name) => {
+    showMenu(false);
     main.dataset.panel = name;
     for (const b of buttons) {
       const open = b.dataset.panel === name;
@@ -21,9 +43,9 @@ export function initPanels(doc) {
   };
   for (const b of buttons) b.addEventListener('click', () => show(main.dataset.panel === b.dataset.panel ? '' : b.dataset.panel));
 
-  // A tap on the map closes the open drawer instead of editing under it (capture runs before the canvas's own handlers).
+  // A tap on the map closes the open drawer or menu instead of editing under it (capture runs before the canvas's own handlers).
   doc.getElementById('canvas-wrap').addEventListener('pointerdown', (ev) => {
-    if (!narrow.matches || !main.dataset.panel) return;
+    if (!narrow.matches || (!main.dataset.panel && !topbar.classList.contains('show-menu'))) return;
     ev.stopPropagation();
     show('');
   }, true);

@@ -14,6 +14,7 @@ export default {
   'topbar.redoTitle': 'Ponów (Ctrl+Y)',
   'topbar.fit': 'Dopasuj',
   'topbar.toolsPanel': 'Narzędzia',
+  'topbar.more': 'Więcej',
   'topbar.fitTitle': 'Dopasuj układ do widoku (0)',
   'topbar.language': 'Język',
   'topbar.whatsNew': 'Nowości',

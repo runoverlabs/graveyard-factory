@@ -16,6 +16,7 @@ export default {
   'topbar.redoTitle': 'Redo (Ctrl+Y)',
   'topbar.fit': 'Fit',
   'topbar.toolsPanel': 'Tools',
+  'topbar.more': 'More',
   'topbar.fitTitle': 'Fit layout in view (0)',
   'topbar.language': 'Language',
   'topbar.whatsNew': 'What\'s new',

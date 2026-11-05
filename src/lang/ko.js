@@ -14,6 +14,7 @@ export default {
   'topbar.redoTitle': '다시 실행 (Ctrl+Y)',
   'topbar.fit': '맞춤',
   'topbar.toolsPanel': '도구',
+  'topbar.more': '더 보기',
   'topbar.fitTitle': '배치가 한눈에 보이도록 맞춤 (0)',
   'topbar.language': '언어',
   'topbar.whatsNew': '새 소식',

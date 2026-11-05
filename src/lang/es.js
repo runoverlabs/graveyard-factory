@@ -14,6 +14,7 @@ export default {
   'topbar.redoTitle': 'Rehacer (Ctrl+Y)',
   'topbar.fit': 'Ajustar',
   'topbar.toolsPanel': 'Herramientas',
+  'topbar.more': 'Más',
   'topbar.fitTitle': 'Ajustar el diseño a la vista (0)',
   'topbar.language': 'Idioma',
   'topbar.whatsNew': 'Novedades',

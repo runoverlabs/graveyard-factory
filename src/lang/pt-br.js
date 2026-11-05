@@ -14,6 +14,7 @@ export default {
   'topbar.redoTitle': 'Refazer (Ctrl+Y)',
   'topbar.fit': 'Ajustar',
   'topbar.toolsPanel': 'Ferramentas',
+  'topbar.more': 'Mais',
   'topbar.fitTitle': 'Ajustar o layout à tela (0)',
   'topbar.language': 'Idioma',
   'topbar.whatsNew': 'Novidades',

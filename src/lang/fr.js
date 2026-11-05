@@ -14,6 +14,7 @@ export default {
   'topbar.redoTitle': 'Rétablir (Ctrl+Y)',
   'topbar.fit': 'Ajuster',
   'topbar.toolsPanel': 'Outils',
+  'topbar.more': 'Plus',
   'topbar.fitTitle': 'Ajuster le plan à la vue (0)',
   'topbar.language': 'Langue',
   'topbar.whatsNew': 'Nouveautés',

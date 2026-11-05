@@ -14,6 +14,7 @@ export default {
   'topbar.redoTitle': '重做 (Ctrl+Y)',
   'topbar.fit': '适应',
   'topbar.toolsPanel': '工具',
+  'topbar.more': '更多',
   'topbar.fitTitle': '将布局调整到视野内 (0)',
   'topbar.language': '语言',
   'topbar.whatsNew': '更新内容',

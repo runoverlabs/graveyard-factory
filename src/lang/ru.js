@@ -14,6 +14,7 @@ export default {
   'topbar.redoTitle': 'Повторить (Ctrl+Y)',
   'topbar.fit': 'Вписать',
   'topbar.toolsPanel': 'Инструменты',
+  'topbar.more': 'Ещё',
   'topbar.fitTitle': 'Вписать схему в окно (0)',
   'topbar.language': 'Язык',
   'topbar.whatsNew': 'Что нового',

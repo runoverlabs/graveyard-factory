@@ -141,37 +141,72 @@ kbd {
   color: var(--muted);
 }
 
-.panel-toggles { display: none; }
+.panel-toggles, .more-toggle { display: none; }
+/* Desktop: the menu's contents sit in the top bar itself, in this order after the title. */
+.topbar-menu { display: contents; }
+.app-title, .topbar .name { order: -2; }
+.clear-group, .files-group { order: -1; }
 
-/* Narrow screens (phones, tablets): the map takes the whole width and the side panels slide over it,
-   opened from the top bar (src/panels.js; keep NARROW_QUERY in step). */
+/* Narrow screens (phones, tablets): the map takes the whole width, the side panels slide over it from
+   the left, and the top bar is one row with the rest of its controls in the More menu
+   (src/panels.js; keep NARROW_QUERY in step). */
 @media (max-width: 1100px) {
-  .panel-toggles { display: flex; order: -1; }
-  .panel-toggles button { font-weight: 600; }
-  .panel-toggles button.active { border-color: var(--accent); background: #1e90ff33; }
+  .panel-toggles { display: flex; order: -3; }
+  .more-toggle { display: inline-block; }
+  .view-group { margin-left: auto; }
+  .panel-toggles button, .more-toggle { font-weight: 600; }
+  .panel-toggles button.active, .more-toggle[aria-expanded=true] { border-color: var(--accent); background: #1e90ff33; }
+  .topbar { position: relative; z-index: 10; flex-wrap: nowrap; gap: 8px; padding: 6px 8px; }
+  .app-title { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+
+  .topbar-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: min(380px, 100vw);
+    max-height: calc(100dvh - 60px);
+    overflow-y: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 12px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 0;
+    border-radius: 0 0 0 8px;
+    box-shadow: 0 12px 24px #0009;
+  }
+  .topbar.show-menu .topbar-menu { display: flex; }
+  .topbar-menu .name { width: 100%; }
+  .topbar-menu .group { flex-wrap: wrap; }
+  .topbar-menu .toggles { margin-left: 0; gap: 6px 14px; }
+
   .main { grid-template-columns: 1fr; position: relative; overflow: hidden; }
   .main > .sidebar {
     position: absolute;
     top: 0;
     bottom: 0;
+    left: 0;
     z-index: 5;
     width: min(340px, 88vw);
+    border-left: 0;
+    border-right: 1px solid var(--border);
+    transform: translateX(-100%);
     visibility: hidden;
     transition: transform 0.2s ease, visibility 0.2s;
     box-shadow: 0 0 24px #0009;
   }
-  #tools-panel { left: 0; transform: translateX(-100%); }
-  .main > .planner-panel { right: 0; transform: translateX(100%); }
   .main[data-panel=tools] #tools-panel,
   .main[data-panel=planner] .planner-panel { transform: none; visibility: visible; }
 }
 
-/* Phones: one scrolling row of top bar controls instead of several wrapped ones. */
-@media (max-width: 700px) {
-  .topbar { flex-wrap: nowrap; overflow-x: auto; gap: 8px; padding: 6px 8px; scrollbar-width: none; }
-  .topbar > * { flex: none; }
-  .topbar .name { width: 130px; }
-  .toggles { margin-left: 0; }
+/* Phones: the title is left to screen readers to keep the row to the buttons. */
+@media (max-width: 560px) {
+  .app-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .topbar { gap: 4px; }
+  .view-group { gap: 3px; }
+  .topbar button { padding: 4px 8px; }
   .statusbar { padding: 0 8px; gap: 8px; }
 }
 
