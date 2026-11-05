@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import EN from '../src/lang/en.js';
 import { t, setLanguage, getLanguage, pickLanguage, LANGUAGES } from '../src/i18n.js';
 import { ITEM_BY_ID, STATIONS, EXTENSIONS, TALENTS, ENTITY_KINDS } from '../src/catalog.js';
@@ -19,7 +20,7 @@ function sourceFiles(dir) {
     return e.isDirectory() ? (e.name === 'lang' ? [] : sourceFiles(p)) : /\.js$/.test(e.name) ? [p] : [];
   });
 }
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url)); // .pathname breaks on Windows (/C:/...)
 const sources = [...sourceFiles(path.join(root, 'src')), path.join(root, 'index.html')].map((f) => fs.readFileSync(f, 'utf8')).join('\n');
 
 // Keys named by prefix: the code builds them from ids (tool.<id>, kind.<id>, …).
