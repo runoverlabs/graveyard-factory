@@ -44,11 +44,26 @@ export function initPanels(doc) {
   for (const b of buttons) b.addEventListener('click', () => show(main.dataset.panel === b.dataset.panel ? '' : b.dataset.panel));
 
   // A tap on the map closes the open drawer or menu instead of editing under it (capture runs before the canvas's own handlers).
-  doc.getElementById('canvas-wrap').addEventListener('pointerdown', (ev) => {
-    if (!narrow.matches || (!main.dataset.panel && !topbar.classList.contains('show-menu'))) return;
+  // The editor sees none of that gesture: not the closing finger's moves and lift, nor a second finger put down meanwhile,
+  // which it would otherwise take for a fresh single touch.
+  const wrap = doc.getElementById('canvas-wrap');
+  /** @type {Set<number>} pointers of the gesture that closed a drawer, still down */
+  const swallowed = new Set();
+  wrap.addEventListener('pointerdown', (ev) => {
+    if (!swallowed.size && (!narrow.matches || (!main.dataset.panel && !topbar.classList.contains('show-menu')))) return;
     ev.stopPropagation();
+    swallowed.add(ev.pointerId);
+    wrap.setPointerCapture(ev.pointerId); // so its lift is seen here even off the map, and a mouse can't leave it stuck
     show('');
   }, true);
+  for (const type of ['pointermove', 'pointerup', 'pointercancel']) {
+    wrap.addEventListener(type, (ev) => {
+      const id = /** @type {PointerEvent} */ (ev).pointerId;
+      if (!swallowed.has(id)) return;
+      ev.stopPropagation();
+      if (type !== 'pointermove') swallowed.delete(id);
+    }, true);
+  }
   // Picking a tool closes the tools drawer so the map is free to draw on.
   doc.getElementById('tools-panel').addEventListener('click', (ev) => {
     if (narrow.matches && /** @type {HTMLElement} */ (ev.target).closest('.tools button')) show('');
