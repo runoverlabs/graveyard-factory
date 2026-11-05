@@ -62,6 +62,10 @@
   </svg>
   <header class="topbar">
     <h1 class="app-title">Graveyard Keeper 2 Factory Planner</h1>
+    <div class="group panel-toggles">
+      <button data-panel="tools" aria-controls="tools-panel" data-i18n="topbar.toolsPanel">Tools</button>
+      <button data-panel="planner" aria-controls="planner" data-i18n="planner.title">Planner</button>
+    </div>
     <input id="layout-name" class="name" type="text" spellcheck="false" aria-label="Layout name" data-i18n-aria-label="topbar.layoutName">
     <div class="group">
       <button data-action="clear" title="Remove everything placed on the floor (distribution stations stay)" data-i18n-title="topbar.clearTitle" data-i18n="topbar.clear">Clear</button>
@@ -92,7 +96,7 @@
   </header>
 
   <main class="main">
-    <aside class="sidebar">
+    <aside class="sidebar" id="tools-panel">
       <section>
         <h2 data-i18n="sidebar.floorSections">Floor sections</h2>
         <div id="sections" class="sections"></div>
@@ -136,6 +140,7 @@
           <li data-i18n-html="controls.rotate"><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd> rotate</li>
           <li data-i18n-html="controls.erase"><kbd>Right-drag</kbd> erase entities</li>
           <li data-i18n-html="controls.zoomPan"><kbd>Wheel</kbd> zoom · <kbd>Middle</kbd>/<kbd>Space</kbd>+drag pan</li>
+          <li data-i18n-html="controls.touch"><kbd>Two fingers</kbd> pinch zoom · drag pan</li>
           <li data-i18n-html="controls.delete"><kbd>Del</kbd> delete selected · <kbd>Esc</kbd> select tool</li>
           <li data-i18n="controls.belts">Belts follow drag direction</li>
         </ul>

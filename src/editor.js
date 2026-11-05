@@ -91,6 +91,12 @@ export class Editor {
     this.hover = null;
     /** @type {Drag} */
     this.drag = null;
+    /** @type {Map<number, { x: number, y: number }>} touch pointers currently down */
+    this.touches = new Map();
+    /** @type {{ before: string, undo: number }} layout when the first finger went down */
+    this.touchStart = null;
+    /** @type {{ mx: number, my: number, dist: number, cell: number, ox: number, oy: number }} */
+    this.pinch = null;
     this.spaceHeld = false;
     /** @type {string[]} */
     this.undoStack = [];
@@ -449,6 +455,69 @@ export class Editor {
     }, { passive: false });
   }
 
+  // ---- touch: two fingers pinch to zoom and drag to pan ----------------------
+
+  /** @param {PointerEvent} ev @returns {boolean} true when the event belongs to a pinch */
+  touchDown(ev) {
+    if (ev.pointerType !== 'touch') return false;
+    if (!this.touches.size) this.touchStart = { before: this.snapshot(), undo: this.undoStack.length };
+    this.touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (this.touches.size !== 2) return this.touches.size > 2 || this.pinch != null;
+    this.canvas.setPointerCapture(ev.pointerId);
+    // The first finger already started a tool action; a second one means it was a pinch after all.
+    this.drag = null;
+    const { before, undo } = this.touchStart;
+    if (this.snapshot() !== before) {
+      this.layout = Layout.fromJSON(before);
+      this.undoStack.length = undo;
+      this.changed();
+    }
+    const p = this.pinchPoints();
+    this.pinch = { ...p, cell: this.view.cell, ox: this.view.ox, oy: this.view.oy };
+    this.updateCursor();
+    this.requestDraw();
+    return true;
+  }
+
+  /** @returns {{ mx: number, my: number, dist: number }} midpoint (canvas px) and spread of the first two touches */
+  pinchPoints() {
+    const [a, b] = [...this.touches.values()];
+    const r = this.canvas.getBoundingClientRect();
+    return {
+      mx: (a.x + b.x) / 2 - r.left,
+      my: (a.y + b.y) / 2 - r.top,
+      dist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+    };
+  }
+
+  /** @param {PointerEvent} ev @returns {boolean} */
+  touchMove(ev) {
+    if (!this.touches.has(ev.pointerId)) return false;
+    this.touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    const s = this.pinch;
+    if (!s) return false;
+    if (this.touches.size < 2) return true;
+    const p = this.pinchPoints();
+    const cell = clamp(s.cell * p.dist / s.dist, MIN_CELL, MAX_CELL);
+    // Keep the floor point that was under the fingers' midpoint under it.
+    const k = cell / s.cell;
+    this.view.ox = Math.round(p.mx - (s.mx - s.ox) * k);
+    this.view.oy = Math.round(p.my - (s.my - s.oy) * k);
+    this.view.cell = cell;
+    this.requestDraw();
+    return true;
+  }
+
+  /** @param {PointerEvent} ev @returns {boolean} */
+  touchUp(ev) {
+    if (!this.touches.delete(ev.pointerId)) return false;
+    const inPinch = this.pinch != null;
+    if (this.canvas.hasPointerCapture(ev.pointerId) && inPinch) this.canvas.releasePointerCapture(ev.pointerId);
+    // Once pinching, the fingers left over do nothing until they are all lifted.
+    if (!this.touches.size) this.pinch = null;
+    return inPinch;
+  }
+
   // A click on the strip of crops above the top wall sets the selected garden distributor.
   /** @param {XY} cell */
   pickGardenCrop(cell) {
@@ -464,6 +533,7 @@ export class Editor {
 
   /** @param {PointerEvent} ev */
   onPointerDown(ev) {
+    if (this.touchDown(ev)) return;
     if (this.drag) return;
     this.canvas.setPointerCapture(ev.pointerId);
     const cell = this.cellAt(ev);
@@ -517,6 +587,7 @@ export class Editor {
 
   /** @param {PointerEvent} ev */
   onPointerMove(ev) {
+    if (this.touchMove(ev)) return;
     const cell = this.cellAt(ev);
     const moved = !this.hover || cell.x !== this.hover.x || cell.y !== this.hover.y;
     this.hover = cell;
@@ -558,6 +629,7 @@ export class Editor {
 
   /** @param {PointerEvent} ev */
   onPointerUp(ev) {
+    if (this.touchUp(ev)) return;
     const d = this.drag;
     if (!d) return;
     this.drag = null;

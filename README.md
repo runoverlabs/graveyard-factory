@@ -12,7 +12,7 @@ A layout editor and automatic planner for the conveyor factory in Graveyard Keep
 
 Open <https://graveyard-factory.runoverlabs.dev/>.
 
-- **Edit by hand.** Pick a tool on the left (belt, underground, splitter, station, chest and so on, or press its key), click or drag on the floor. `R` rotates, `Del` deletes, Ctrl+Z / Ctrl+Y undo and redo, the wheel zooms and middle-drag pans. The Issues panel lists anything that breaks the game's rules.
+- **Edit by hand.** Pick a tool on the left (belt, underground, splitter, station, chest and so on, or press its key), click or drag on the floor. `R` rotates, `Del` deletes, Ctrl+Z / Ctrl+Y undo and redo, the wheel zooms and middle-drag pans (on a phone or tablet, pinch with two fingers to zoom and drag them to pan; the Tools and Planner buttons open the side panels). The Issues panel lists anything that breaks the game's rules.
 - **Let the planner do it.** In the Planner panel on the right, add the final outputs you want per minute (for example "Supply: Preserves II (Onion ★★★)"), press **Generate layout** and watch the search run, then **Apply** to add the result to your layout.
 - **Repaired floor sections** (left panel) say which parts of the factory floor you've fixed in the game, so the plan only uses floor you have.
 - **Your language.** The interface follows your browser's language and has a selector in the top bar: English, Deutsch, Español, Français, 日本語, 한국어, Polski, Português (Brasil), Русский, Türkçe and 简体中文. Item, station and extension names are the game's own; the rest of the text was machine-translated, so corrections are welcome as pull requests (see `docs/INTERNALS.md`, "Languages").
