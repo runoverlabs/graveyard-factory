@@ -5,7 +5,7 @@ import {
   DIRS, STATIONS, stationDims, stationVariants, defaultVariant, ROMAN, RAW_MATERIALS, EXTERNAL_ITEMS, PRODUCTS, OTHER_ITEMS,
   ITEM_BY_ID, ENTITY_KINDS, CELLAR_ITEMS, GARDEN_ITEMS, GARDEN_PICKER, RECIPE_BY_ID, TALENTS, EXTENSIONS, CHEST_LEVELS, EXTENSION_SLOTS, POWER_ICON, BELT_MASTER_ICON, ZOMBIE_POWER, FLOOR_SECTIONS, extensionsFor, recipesFor, entityBounds,
 } from './catalog.js';
-import { Layout, VOID, FLOOR, terrainName, describeEntity } from './model.js';
+import { Layout, VOID, FLOOR, terrainName, describeEntity, powerSupply, validPowerLimit } from './model.js';
 import { drawLayout, loadArt } from './render.js';
 import { factoryFloor } from './floor.js';
 import { Background } from './background.js';
@@ -1097,6 +1097,14 @@ export class Editor {
     const beltMaster = /** @type {HTMLInputElement} */ (h('input', { type: 'checkbox' }));
     beltMaster.checked = l.beltMaster;
     beltMaster.addEventListener('change', () => this.mutate(() => { this.layout.beltMaster = beltMaster.checked; }));
+    // The user's own maximum (mods); empty keeps the game's, shown as the placeholder.
+    const gamePower = powerSupply(0, l.beltMaster).available;
+    const powerLimit = /** @type {HTMLInputElement} */ (h('input', { type: 'number', min: '1', step: '1', class: 'power-limit', placeholder: String(gamePower), 'aria-label': t('stats.powerLimit') }));
+    powerLimit.value = l.powerLimit ? String(l.powerLimit) : '';
+    powerLimit.addEventListener('change', () => {
+      this.mutate(() => { this.layout.powerLimit = validPowerLimit(powerLimit.value); });
+      powerLimit.value = this.layout.powerLimit ? String(this.layout.powerLimit) : ''; // drop what wasn't a valid maximum
+    });
     this.$('stats').replaceChildren(
       h('span', { class: 'power', title: t('stats.powerTitle') }, h('img', { src: POWER_ICON, alt: '' }), t('stats.power')),
       h('b', { class: p.over ? 'over' : '' }, `${p.used} / ${p.available}`),
@@ -1104,6 +1112,8 @@ export class Editor {
       h('b', { class: p.over ? 'over' : '' }, `${p.zombies} / ${p.maxZombies}`),
       h('label', { class: 'perk', title: t('stats.beltMasterTitle') }, beltMaster, h('img', { src: BELT_MASTER_ICON, alt: '' }), t('stats.beltMaster')),
       h('span', {}),
+      h('span', { title: t('stats.powerLimitTitle', { available: gamePower }) }, t('stats.powerLimit')),
+      powerLimit,
       ...rows.flatMap(([k, v]) => [h('span', {}, k), h('b', {}, String(v))]),
       h('span', { class: 'materials-head', title: t('stats.materialsTitle') }, t('stats.materials')),
       ...(materials.length ? materials.flatMap(([id, n]) => {

@@ -41,6 +41,7 @@ import { t } from './i18n.js';
  * @property {number} [nextId]
  * @property {PlannerSettings} [planner]
  * @property {boolean} [beltMaster] the player has the Belt Master perk
+ * @property {number | null} [powerLimit] the user's own power maximum (mods), instead of the game's
  * @property {number[] | null} [repaired] floor sections repaired; null when the terrain isn't the factory's sections
  */
 
@@ -57,6 +58,7 @@ import { t } from './i18n.js';
  * @property {EntitySpec[]} [entities]
  * @property {PlannerSettings} [planner]
  * @property {boolean} [beltMaster]
+ * @property {number} [powerLimit]
  * @property {number[]} [repaired]
  */
 
@@ -85,9 +87,10 @@ export const REPAIRABLE_SECTIONS = FLOOR_SECTIONS.filter((s) => s.repair).map((s
 
 export class Layout {
   /** @param {LayoutInit} [init] */
-  constructor({ name = 'Untitled factory', width, height, terrain, entities = [], nextId, planner, beltMaster = false, repaired = null } = {}) {
+  constructor({ name = 'Untitled factory', width, height, terrain, entities = [], nextId, planner, beltMaster = false, powerLimit = null, repaired = null } = {}) {
     this.name = name;
     this.beltMaster = beltMaster; // Belt Master perk: more power per zombie
+    this.powerLimit = validPowerLimit(powerLimit); // the user's own power maximum, or null for the game's
     /** @type {number[] | null} */
     this.repaired = repaired; // repaired floor sections, when the terrain is the factory's (see setRepaired)
     this.planner = planner; // planner settings (targets, options), saved with the layout
@@ -451,7 +454,7 @@ export class Layout {
 
   /** Power supply: the factory's carousels against the layout's power use. */
   powerSupply() {
-    return powerSupply(this.power(), this.beltMaster);
+    return powerSupply(this.power(), this.beltMaster, this.powerLimit);
   }
 
   // ---- validation ----------------------------------------------------------
@@ -595,7 +598,9 @@ export class Layout {
     if (porters < portersFor(supplyStations)) add('info', null, t('issue.porters', { stations: t('count.supplyStations', { n: supplyStations }), porters: t('count.porters', { n: portersFor(supplyStations) }), placed: porters }), []);
     const power = this.powerSupply();
     if (power.over) {
-      add('warning', null, t('issue.power', { used: power.used, available: power.available, maxZombies: power.maxZombies, carousels: power.carousels, over: power.over }), []);
+      add('warning', null, power.custom
+        ? t('issue.powerCustom', { used: power.used, available: power.available, over: power.over })
+        : t('issue.power', { used: power.used, available: power.available, maxZombies: power.maxZombies, carousels: power.carousels, over: power.over }), []);
     }
     return issues;
   }
@@ -649,6 +654,7 @@ export class Layout {
       ...(this.repaired ? { repaired: [...this.repaired] } : {}),
       ...(this.planner ? { planner: structuredClone(this.planner) } : {}),
       ...(this.beltMaster ? { beltMaster: true } : {}),
+      ...(this.powerLimit ? { powerLimit: this.powerLimit } : {}),
     };
   }
 
@@ -663,7 +669,7 @@ export class Layout {
     // Before format 3 the planner had one search (annealing) and no `algorithm`;
     // such files get today's default, both searches.
     if (planner && (data.version ?? 1) < 3 && !planner.algorithm) planner = { ...planner, algorithm: 'both' };
-    const layout = new Layout({ name: data.name, width: 1, height: 1, entities: [], planner, beltMaster: !!data.beltMaster });
+    const layout = new Layout({ name: data.name, width: 1, height: 1, entities: [], planner, beltMaster: !!data.beltMaster, powerLimit: data.powerLimit });
     layout.setTerrainFromText(data.terrain.join('\n'));
     if (data.width) layout.resize({ right: data.width - layout.width });
     if (data.height) layout.resize({ bottom: data.height - layout.height });
@@ -798,16 +804,29 @@ function sectionsIn(layout) {
 
 /**
  * Power the factory's fixed carousels give, against `used` power: the zombies
- * that needs, and how much power is over the maximum.
+ * that needs, and how much power is over the maximum. A `limit` (the user's own
+ * maximum, for mods) replaces the carousels' power, and the zombie count it takes.
  * @param {number} used
  * @param {boolean} beltMaster
+ * @param {number | null} [limit]
  */
-export function powerSupply(used, beltMaster) {
+export function powerSupply(used, beltMaster, limit = null) {
   const { perZombie, perZombieBeltMaster, zombiesPerCarousel, carousels } = ZOMBIE_POWER;
   const each = beltMaster ? perZombieBeltMaster : perZombie;
-  const maxZombies = carousels * zombiesPerCarousel;
-  const available = maxZombies * each;
-  return { used, perZombie: each, carousels, maxZombies, available, zombies: Math.ceil(used / each), over: Math.max(0, used - available) };
+  const custom = validPowerLimit(limit) != null;
+  const available = custom ? /** @type {number} */ (limit) : carousels * zombiesPerCarousel * each;
+  const maxZombies = custom ? Math.ceil(available / each) : carousels * zombiesPerCarousel;
+  return { used, perZombie: each, carousels, maxZombies, available, custom, zombies: Math.ceil(used / each), over: Math.max(0, used - available) };
+}
+
+/**
+ * A power maximum the user set: a whole number above 0, or null (the game's).
+ * @param {unknown} value
+ * @returns {number | null}
+ */
+export function validPowerLimit(value) {
+  const n = Number(value);
+  return value != null && value !== '' && Number.isInteger(n) && n > 0 ? n : null;
 }
 
 /**
