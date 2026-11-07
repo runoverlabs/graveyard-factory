@@ -184,6 +184,12 @@ test('bioreactor is 2 wide and 3 high with its ports in the middle row, and flip
   assert.deepEqual([r.inputs, r.outputs, r.time], [{ wheat: 5 }, { zombie_power: 1 }, 10]);
 });
 
+test('Zombie Mechanisms are made from Iron Kit II since the game update of November 2026', () => {
+  const r = (/** @type {string} */ id) => RECIPES.find((x) => x.id === id)?.inputs;
+  assert.deepEqual(r('zombie_mechanism'), { iron_kit_2: 2, zombie_power: 1 });
+  assert.deepEqual(r('supply_engineering_mechanism'), { iron_kit_2: 4, zombie_power: 2 });
+});
+
 test('kitchen is 2x2 with inputs on top or on a side', () => {
   const l = Layout.blank(8, 8);
   const k = l.add({ kind: 'station', type: 'kitchen', level: 1, x: 2, y: 2 });
