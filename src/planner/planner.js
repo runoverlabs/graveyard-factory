@@ -101,7 +101,7 @@ import { powerOf, powerSupply } from '../model.js';
 // routing everything always wins.
 export const FAIL_COST = 1000;
 // Score per point of power over the factory's maximum (its carousels are fixed,
-// so more can't be added). Belts cost 1 power each (chests none), so over the
+// so more can't be added; or the user's own maximum). Belts cost 1 power each (chests none), so over the
 // maximum every piece saved counts this much more.
 export const OVER_POWER_COST = 20;
 // "Supply: ..." outputs end in a supply station, preferably on or near SUPPLY_ZONE (a weak pull, to save power):
@@ -201,6 +201,7 @@ export class Planner {
     // Power the kept pieces already use.
     this.basePower = powerOf(layout.entities);
     this.beltMaster = !!layout.beltMaster;
+    this.powerLimit = layout.powerLimit ?? null;
     this._buildBase();
     this._buildAprons();
     this._buildSupplyCells();
@@ -781,7 +782,7 @@ export class Planner {
 
     const placedStations = placements.filter(Boolean).length;
     const power = this.basePower + placedStations + powerOf([...g.placed.values()]);
-    const { over } = powerSupply(power, this.beltMaster);
+    const { over } = powerSupply(power, this.beltMaster, this.powerLimit);
     const score = cost + (this.options.failCost ?? FAIL_COST) * failures.length + (this.options.overPowerCost ?? OVER_POWER_COST) * over;
     return { score, failed: failures.length, failures, grid: g, edges: edges.length, power, over };
   }
@@ -888,7 +889,7 @@ export class Planner {
     for (const e of r.grid.placed.values()) entities.push({ ...e });
     for (const slot of this.porterSlots.slice(0, this._portersToBuild(r.grid))) entities.push({ kind: 'porter', ...slot });
     for (const e of entities) { e.planned = true; e.locked = false; }
-    const supply = powerSupply(this.basePower + powerOf(entities), this.beltMaster);
+    const supply = powerSupply(this.basePower + powerOf(entities), this.beltMaster, this.powerLimit);
     const count = (/** @type {string} */ kind) => entities.filter((e) => e.kind === kind).length;
     return {
       entities,

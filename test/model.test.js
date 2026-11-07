@@ -184,6 +184,12 @@ test('bioreactor is 2 wide and 3 high with its ports in the middle row, and flip
   assert.deepEqual([r.inputs, r.outputs, r.time], [{ wheat: 5 }, { zombie_power: 1 }, 10]);
 });
 
+test('Zombie Mechanisms are made from Iron Kit II since the game update of November 2026', () => {
+  const r = (/** @type {string} */ id) => RECIPES.find((x) => x.id === id)?.inputs;
+  assert.deepEqual(r('zombie_mechanism'), { iron_kit_2: 2, zombie_power: 1 });
+  assert.deepEqual(r('supply_engineering_mechanism'), { iron_kit_2: 4, zombie_power: 2 });
+});
+
 test('kitchen is 2x2 with inputs on top or on a side', () => {
   const l = Layout.blank(8, 8);
   const k = l.add({ kind: 'station', type: 'kitchen', level: 1, x: 2, y: 2 });
@@ -536,7 +542,7 @@ test('build materials: every buildable piece has a cost in known items, and a la
 
 test('power supply: 5 fixed carousels, 20 zombies, 10 power each (20 with Belt Master)', async () => {
   const { powerSupply } = await import('../src/model.js');
-  assert.deepEqual(powerSupply(200, false), { used: 200, perZombie: 10, carousels: 5, maxZombies: 20, available: 200, zombies: 20, over: 0 });
+  assert.deepEqual(powerSupply(200, false), { used: 200, perZombie: 10, carousels: 5, maxZombies: 20, available: 200, custom: false, zombies: 20, over: 0 });
   assert.equal(powerSupply(201, false).over, 1);
   assert.equal(powerSupply(201, false).zombies, 21);
   assert.equal(powerSupply(400, true).over, 0);
@@ -550,6 +556,25 @@ test('power over the maximum is a warning', () => {
   assert.match(warn()[0].message, /Power 250 is over the factory's 200 \(20 zombies on 5 carousels\): 50 too many/);
   l.beltMaster = true;
   assert.equal(warn().length, 0); // 400 with Belt Master
+});
+
+test('a power maximum of the user\'s own replaces the game\'s, and is saved with the layout', async () => {
+  const { powerSupply, validPowerLimit } = await import('../src/model.js');
+  assert.deepEqual(powerSupply(450, true, 600), { used: 450, perZombie: 20, carousels: 5, maxZombies: 30, available: 600, custom: true, zombies: 23, over: 0 });
+  assert.equal(powerSupply(150, false, 100).over, 50);
+  assert.deepEqual(['', null, 0, -5, 2.5, 'abc', '300', 300].map(validPowerLimit), [null, null, null, null, null, null, 300, 300]);
+
+  const l = Layout.blank(50, 5);
+  for (let x = 0; x < 50; x++) for (let y = 0; y < 5; y++) l.add({ kind: 'belt', x, y, rot: E }); // 250 power
+  l.powerLimit = 240;
+  const warn = l.validate().filter((i) => i.severity === 'warning' && /over your maximum/.test(i.message));
+  assert.match(warn[0].message, /Power 250 is over your maximum of 240: 10 too many/);
+  l.powerLimit = 1000;
+  assert.equal(l.validate().filter((i) => /Power \d+ is over/.test(i.message)).length, 0);
+  assert.equal(Layout.fromJSON(l.toJSON()).powerLimit, 1000);
+  l.powerLimit = null;
+  assert.equal('powerLimit' in l.toJSON(), false);
+  assert.equal(Layout.fromJSON({ terrain: ['..'], powerLimit: -3 }).powerLimit, null);
 });
 
 test('placed zombie carousels from older files are dropped (the factory\'s are fixed)', () => {
