@@ -278,7 +278,7 @@ export class RouteGrid {
   //   starts:  [{ k, d, cost, straight, noChest, origin }]  arrivals the route may
   //            begin with (noChest: must lay a belt before ending in a chest)
   //   targets: Map k -> { mask, end, cost }         arrivals that finish it (cost: extra
-  //            cost of finishing there, e.g. a supply station far from its corner)
+  //            cost of finishing there, e.g. a supply station far from a supply zone)
   //   flexChest: end by placing a chest on any suitable free cell
   //   allow:   Set of reserved cells this route may use
   //   exempt:  Map k -> rotation mask (belts allowed next to chests)

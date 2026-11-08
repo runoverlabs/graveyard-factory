@@ -497,7 +497,7 @@ test('a station side output needs a belt before a chest; a top output does not',
   assert.ok(!warns(top).some((m) => /side output/.test(m)));
 });
 
-test('factory power: 1 per station and belt, 2 per underground, none for chests', () => {
+test('factory power: 1 per station, belt and supply station, 2 per underground, none for chests', () => {
   const l = Layout.blank(12, 8);
   l.add({ kind: 'station', type: 'smithy', level: 1, x: 1, y: 1 });
   l.add({ kind: 'belt', x: 5, y: 1, rot: E });
@@ -508,6 +508,8 @@ test('factory power: 1 per station and belt, 2 per underground, none for chests'
   assert.equal(l.power(), 3);
   l.add({ kind: 'underground', x: 1, y: 5, rot: E });
   assert.equal(l.power(), 5);
+  l.add({ kind: 'supply_station', x: 9, y: 1, rot: E });
+  assert.equal(l.power(), 6);
 });
 
 test('build materials: every buildable piece has a cost in known items, and a layout adds them up', () => {

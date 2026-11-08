@@ -519,7 +519,7 @@ export const PORTER = { stationsEach: 3, row: { x0: 23, x1: 29, y: 24 }, build: 
 export const portersFor = (supplyStations) => Math.ceil(supplyStations / PORTER.stationsEach);
 // Where supplies leave the floor: the hallway above the East section (row 27) and the one east of the
 // Far north section, which meets its east column at rows 5-7. Supply stations can go anywhere; the zones
-// only pull them, weakly.
+// only pull them.
 /** @type {{ x0: number, x1: number, y0: number, y1: number }[]} */
 export const SUPPLY_ZONES = [{ x0: 23, x1: 31, y0: 27, y1: 27 }, { x0: 19, x1: 19, y0: 5, y1: 7 }];
 /** @type {(x: number, y: number) => number} cells from the nearest zone (0 on it) */
@@ -536,7 +536,7 @@ export const isSupplyItem = (id) => id.startsWith('supply_');
 // The icon is the game's power gear, tinted yellow.
 /** @type {Partial<Record<import('./types.js').EntityKind, number>>} */
 // Chests and the Zombie Supply Porter use none (from the user).
-export const POWER_COST = { station: 1, belt: 1, underground: 2 };
+export const POWER_COST = { station: 1, belt: 1, underground: 2, supply_station: 1 };
 export const POWER_ICON = 'assets/ui/power.webp';
 
 // What each piece is built from (item id -> count), from the game's building

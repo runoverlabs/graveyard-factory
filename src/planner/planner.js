@@ -6,7 +6,7 @@
 // route costs (belts, turns, undergrounds, splitters, chests) plus a large
 // penalty per connection that could not be routed.
 
-import { STATIONS, RECIPE_BY_ID, DIRS, ENTITY_KINDS, CELLAR_ITEMS, GARDEN_ITEMS, entityCells, stationDims, stationVariants, isSupplyItem, supplyZoneDistance, PORTER, portersFor } from '../catalog.js';
+import { STATIONS, RECIPE_BY_ID, DIRS, ENTITY_KINDS, CELLAR_ITEMS, GARDEN_ITEMS, entityCells, stationDims, stationVariants, isSupplyItem, supplyZoneDistance, POWER_COST, PORTER, portersFor } from '../catalog.js';
 import { RouteGrid, DX, DY, ROUTE_COSTS, NO_CHEST_PORT, NO_CHEST_INPUT } from './router.js';
 import { powerOf, powerSupply } from '../model.js';
 
@@ -101,11 +101,12 @@ import { powerOf, powerSupply } from '../model.js';
 // routing everything always wins.
 export const FAIL_COST = 1000;
 // Score per point of power over the factory's maximum (its carousels are fixed,
-// so more can't be added; or the user's own maximum). Belts cost 1 power each (chests none), so over the
+// so more can't be added; or the user's own maximum). Belts and supply stations cost 1 power each (chests none), so over the
 // maximum every piece saved counts this much more.
 export const OVER_POWER_COST = 20;
-// "Supply: ..." outputs end in a supply station, which may go on any free floor cell, preferably near
-// SUPPLY_ZONES (a pull to keep supply lines short): this much extra cost per cell away from it.
+// "Supply: ..." outputs end in a supply station, which may go on any free floor cell, preferably near a
+// supply zone (SUPPLY_ZONES, a pull to keep supply lines short): this much extra cost per cell away from the
+// nearest one.
 const SUPPLY_CORNER_COST = 1;
 // Extra cost of a buffered output (see `Edge.buffer`) that has no chest: only when a chest can't fit.
 const BUFFER_MISS_COST = 30;
@@ -391,7 +392,9 @@ export class Planner {
     for (let y = 0; y < l.height; y++) for (let x = 0; x < l.width; x++) {
       const k = g.key(x, y);
       if (!(g.floor[k] && g.occ[k] === 0 && g.reserved[k] === -1 && g.gap[k] === -1 && !this.apron[k])) continue;
-      const target = /** @type {RouteTarget} */ ({ mask: 0b1111, cost: cost(x, y), end: { type: 'newSupply' } });
+      // A new station is one more piece of power, which joining an existing one saves.
+      const price = cost(x, y) + POWER_COST.supply_station;
+      const target = /** @type {RouteTarget} */ ({ mask: 0b1111, cost: price, end: { type: 'newSupply' } });
       this.supplyCells.push({ k, target });
     }
     this.supplyStations = l.entities.filter((e) => e.kind === 'supply_station').map((e) => ({
