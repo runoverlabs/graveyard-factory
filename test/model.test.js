@@ -497,6 +497,18 @@ test('a station side output needs a belt before a chest; a top output does not',
   assert.ok(!warns(top).some((m) => /side output/.test(m)));
 });
 
+test('validation: a distributor feeding an underground\'s input end is flagged, a belt there is not', () => {
+  const l = Layout.blank(6, 14);
+  l.setTerrain(2, 13, VOID);
+  l.add({ kind: 'distributor', x: 2, y: 13, rot: N, material: 'coal' });
+  const belt = l.add({ kind: 'belt', x: 2, y: 12, rot: N });
+  const msgs = () => l.validate().filter((i) => i.severity !== 'info').map((i) => i.message);
+  assert.ok(!msgs().some((m) => /input end/.test(m)), msgs().join('\n'));
+  l.remove(belt.id);
+  l.add({ kind: 'underground', x: 2, y: 12, rot: N });
+  assert.ok(msgs().some((m) => /input end of Underground conveyor at 2,12, which takes nothing from it/.test(m)), msgs().join('\n'));
+});
+
 test('factory power: 1 per station, belt and supply station, 2 per underground, none for chests', () => {
   const l = Layout.blank(12, 8);
   l.add({ kind: 'station', type: 'smithy', level: 1, x: 1, y: 1 });

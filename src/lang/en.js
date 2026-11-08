@@ -263,6 +263,7 @@ export default {
   'issue.sideOutputChest': '{what}: a side output can\'t push straight into {chest} — put a belt in between',
   'issue.beltsFaceEachOther': 'Belts at {a} and {b} face each other',
   'issue.feedsNoInput': '{what} feeds {target} from a side with no input',
+  'issue.distFeedsUndergroundInput': '{what} feeds the input end of {target}, which takes nothing from it',
   'entity.at': '{what} at {x},{y}',
   'error.minSize': 'Layout must be at least 1x1',
   'error.missingTerrain': 'Missing "terrain" rows',

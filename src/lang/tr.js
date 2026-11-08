@@ -261,6 +261,7 @@ export default {
   'issue.sideOutputChest': '{what}: yan çıkış doğrudan {chest} içine itemez — araya bir bant koy',
   'issue.beltsFaceEachOther': '{a} ve {b} konumlarındaki bantlar birbirine bakıyor',
   'issue.feedsNoInput': '{what}, {target} hedefini girişi olmayan bir yandan besliyor',
+  'issue.distFeedsUndergroundInput': '{what}, {target} hedefinin giriş ucunu besliyor, ama orası ondan hiçbir şey almaz',
   'entity.at': '{x},{y} konumunda {what}',
   'error.minSize': 'Yerleşim en az 1x1 olmalı',
   'error.missingTerrain': '"terrain" satırları eksik',

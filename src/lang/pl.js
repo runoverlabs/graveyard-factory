@@ -285,6 +285,7 @@ export default {
   'issue.sideOutputChest': '{what}: boczne wyjście nie może wpychać prosto do: {chest} — wstaw taśmę pośrodku',
   'issue.beltsFaceEachOther': 'Taśmy na {a} i {b} są zwrócone ku sobie',
   'issue.feedsNoInput': '{what} zasila {target} od strony bez wejścia',
+  'issue.distFeedsUndergroundInput': '{what} zasila wejściowy koniec {target}, który nic z niego nie pobiera',
   'entity.at': '{what} na {x},{y}',
   'error.minSize': 'Układ musi mieć co najmniej 1x1',
   'error.missingTerrain': 'Brak wierszy „terrain”',

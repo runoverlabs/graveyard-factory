@@ -249,6 +249,7 @@ export default {
   'issue.sideOutputChest': '{what}：侧面输出不能直接推入{chest}：中间需要放一条传送带',
   'issue.beltsFaceEachOther': '{a}和{b}处的传送带相互对着',
   'issue.feedsNoInput': '{what}从没有输入的一侧向{target}供料',
+  'issue.distFeedsUndergroundInput': '{what}向{target}的输入端供货，但该端不会从中取走任何东西',
   'entity.at': '{x},{y} 处的{what}',
   'error.minSize': '布局至少为 1x1',
   'error.missingTerrain': '缺少“terrain”行',

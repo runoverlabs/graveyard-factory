@@ -261,6 +261,7 @@ export default {
   'issue.sideOutputChest': '{what}: una salida lateral no puede empujar directamente a {chest}: pon una cinta en medio',
   'issue.beltsFaceEachOther': 'Las cintas en {a} y {b} se enfrentan',
   'issue.feedsNoInput': '{what} alimenta a {target} por un lado sin entrada',
+  'issue.distFeedsUndergroundInput': '{what} alimenta el extremo de entrada de {target}, que no toma nada de él',
   'entity.at': '{what} en {x},{y}',
   'error.minSize': 'El diseño debe medir al menos 1x1',
   'error.missingTerrain': 'Faltan las filas de «terrain»',

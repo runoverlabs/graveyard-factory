@@ -365,8 +365,8 @@ export class RouteGrid {
         }
       }
       // Or an underground conveyor, entered from behind (not straight out of a
-      // chest: chests only output onto belts).
-      if (!straight && this._undergroundOk(k, d, allow)) {
+      // chest or a distributor: they only output onto belts).
+      if (!straight && this._undergroundOk(k, d, allow, this.parent[n] === -1)) {
         const nk = this.step(k, d, UNDERGROUND_LENGTH);
         if (nk >= 0) push(node(nk, d, 0), g + this.cost.underground, n, 4 + d);
       }
@@ -374,9 +374,10 @@ export class RouteGrid {
     return finish();
   }
 
-  /** @param {number} k @param {number} d @param {Set<number>} allow */
-  _undergroundOk(k, d, allow) {
+  /** @param {number} k @param {number} d @param {Set<number>} allow @param {boolean} [atStart] the line starts here */
+  _undergroundOk(k, d, allow, atStart = false) {
     if (this.gap[k] !== -1 || this.distFront[k] === d) return false;
+    if (atStart && this.distFront[k] === rev(d)) return false; // a line doesn't start with one out of a distributor
     for (let i = 0; i < UNDERGROUND_LENGTH; i++) {
       const c = this.step(k, d, i);
       if (c < 0 || !this.floor[c]) return false;

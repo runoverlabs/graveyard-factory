@@ -249,6 +249,7 @@ export default {
   'issue.sideOutputChest': '{what}: 측면 출력은 {chest}에 바로 넣을 수 없습니다 — 사이에 벨트를 놓으세요',
   'issue.beltsFaceEachOther': '{a}와(과) {b}의 벨트가 서로 마주 봅니다',
   'issue.feedsNoInput': '{what}이(가) 입력이 없는 쪽에서 {target}에 공급합니다',
+  'issue.distFeedsUndergroundInput': '{what}이(가) {target}의 입력 쪽 끝에 공급하지만, 그곳은 아무것도 받지 않습니다',
   'entity.at': '{x},{y}의 {what}',
   'error.minSize': '배치는 최소 1x1이어야 합니다',
   'error.missingTerrain': '"terrain" 행이 없습니다',

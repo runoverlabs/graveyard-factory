@@ -261,6 +261,7 @@ export default {
   'issue.sideOutputChest': '{what}: uma saída lateral não pode empurrar direto para {chest} — coloque uma esteira entre eles',
   'issue.beltsFaceEachOther': 'As esteiras em {a} e {b} ficam de frente uma para a outra',
   'issue.feedsNoInput': '{what} alimenta {target} por um lado sem entrada',
+  'issue.distFeedsUndergroundInput': '{what} alimenta a extremidade de entrada de {target}, que não recebe nada dele',
   'entity.at': '{what} em {x},{y}',
   'error.minSize': 'O layout deve ter pelo menos 1x1',
   'error.missingTerrain': 'Linhas de "terrain" ausentes',

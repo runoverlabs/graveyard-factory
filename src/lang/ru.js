@@ -285,6 +285,7 @@ export default {
   'issue.sideOutputChest': '{what}: боковой выход не может подавать прямо в {chest} — поставьте между ними ленту',
   'issue.beltsFaceEachOther': 'Ленты в {a} и {b} направлены друг на друга',
   'issue.feedsNoInput': '{what} питает {target} со стороны без входа',
+  'issue.distFeedsUndergroundInput': '{what} подаёт во входной конец {target}, который ничего от него не принимает',
   'entity.at': '{what} в {x},{y}',
   'error.minSize': 'Схема должна быть не меньше 1x1',
   'error.missingTerrain': 'Нет строк «terrain»',

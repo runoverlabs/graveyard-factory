@@ -249,6 +249,7 @@ export default {
   'issue.sideOutputChest': '{what}：側面出力は{chest}へ直接送れません — 間にベルトを置いてください',
   'issue.beltsFaceEachOther': '{a}と{b}のベルトが向かい合っています',
   'issue.feedsNoInput': '{what}が、入力のない側面から{target}へ送っています',
+  'issue.distFeedsUndergroundInput': '{what}は{target}の入力側の端に送り出しますが、そこは何も受け取りません',
   'entity.at': '{x},{y}の{what}',
   'error.minSize': 'レイアウトは1x1以上である必要があります',
   'error.missingTerrain': '「terrain」の行がありません',

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Layout, VOID, REPAIRABLE_SECTIONS, FORMAT_VERSION } from '../src/model.js';
 import { factoryFloor } from '../src/floor.js';
-import { N, E, S, RECIPES, CELLAR_ITEMS, GARDEN_ITEMS, supplyZoneDistance, stationVariants } from '../src/catalog.js';
+import { N, E, S, W, RECIPES, CELLAR_ITEMS, GARDEN_ITEMS, supplyZoneDistance, stationVariants } from '../src/catalog.js';
 import { planProduction, chooseRecipe } from '../src/planner/production.js';
 import { RouteGrid, NO_CHEST_PORT, NO_CHEST_INPUT, COST, ROUTE_COSTS } from '../src/planner/router.js';
 import { Planner, stationInstances, applyResult } from '../src/planner/planner.js';
@@ -78,6 +78,17 @@ test('router: floorAreas labels each connected floor area, and -1 off the floor'
   assert.equal(area[g.key(4, 0)], area[g.key(6, 2)]);
   assert.notEqual(area[g.key(0, 0)], area[g.key(4, 0)]);
   assert.equal(area[g.key(3, 1)], -1);
+});
+
+test('router: a line out of a distributor starts with a belt, since the distributor does not feed an underground', () => {
+  const g = grid(12, 3);
+  const P = g.key(11, 1);
+  g.block(P);
+  g.distFront[g.key(0, 1)] = W; // a distributor behind this cell, facing east
+  const route = () => g.route({ starts: [{ k: g.key(0, 1), d: E, cost: 0, origin: { type: 'port' } }], targets: new Map([[P, { mask: 1 << E, end: { type: 'port' } }]]), allow: new Set(), goalCells: [P] });
+  assert.ok(route().steps[0].act < 4, 'first piece is a belt');
+  g.distFront[g.key(0, 1)] = -1;
+  assert.ok(route().steps[0].act >= 4, 'without the distributor an underground is the cheaper start');
 });
 
 test('router: straight route into a station port', () => {

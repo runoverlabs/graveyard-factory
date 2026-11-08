@@ -261,6 +261,7 @@ export default {
   'issue.sideOutputChest': '{what} : une sortie latérale ne peut pas pousser directement dans {chest} — placez un tapis entre les deux',
   'issue.beltsFaceEachOther': 'Les tapis en {a} et {b} se font face',
   'issue.feedsNoInput': '{what} alimente {target} par un côté sans entrée',
+  'issue.distFeedsUndergroundInput': '{what} alimente l\'extrémité d\'entrée de {target}, qui ne prend rien de lui',
   'entity.at': '{what} en {x},{y}',
   'error.minSize': 'Le plan doit faire au moins 1x1',
   'error.missingTerrain': 'Lignes « terrain » manquantes',

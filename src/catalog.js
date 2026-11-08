@@ -654,8 +654,9 @@ export const FACTORY_CELLAR = { x: -1, y: 14, rot: E };
 export const CELLAR_ITEMS = ['beer', 'wine_1', 'wine_2', 'wine_3'];
 // The cell a distributor (or the cellar) feeds may stay empty, or hold a belt or one of an
 // underground conveyor's belt cells (not its gap), neither pointing back into
-// the distributor; nothing else (confirmed by the user). A distributor feeds it
-// like a chest with one side.
+// the distributor; nothing else (confirmed by the user). A distributor feeds a belt
+// or an underground's output end like a chest with one side, but not its input end,
+// from the front or the side (confirmed in-game).
 /** @type {import('./types.js').EntityKind[]} */
 export const DISTRIBUTOR_FRONT_KINDS = ['belt', 'underground'];
 

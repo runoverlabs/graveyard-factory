@@ -261,6 +261,7 @@ export default {
   'issue.sideOutputChest': '{what}: Ein seitlicher Ausgang kann nicht direkt in {chest} schieben — setze ein Band dazwischen',
   'issue.beltsFaceEachOther': 'Bänder bei {a} und {b} zeigen aufeinander',
   'issue.feedsNoInput': '{what} speist {target} von einer Seite ohne Eingang',
+  'issue.distFeedsUndergroundInput': '{what} speist das Eingangsende von {target}, das nichts davon annimmt',
   'entity.at': '{what} bei {x},{y}',
   'error.minSize': 'Das Layout muss mindestens 1x1 groß sein',
   'error.missingTerrain': 'Zeilen für „terrain“ fehlen',
