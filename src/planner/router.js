@@ -191,6 +191,23 @@ export class RouteGrid {
     return out;
   }
 
+  // The connected floor areas, as a label per cell (-1 off the floor).
+  floorAreas() {
+    const area = new Int32Array(this.W * this.H).fill(-1);
+    let n = 0;
+    for (let k0 = 0; k0 < area.length; k0++) {
+      if (!this.floor[k0] || area[k0] !== -1) continue;
+      area[k0] = n;
+      for (const stack = [k0]; stack.length;) {
+        for (const j of this.neighbours(stack.pop() ?? 0)) {
+          if (this.floor[j] && area[j] === -1) { area[j] = n; stack.push(j); }
+        }
+      }
+      n++;
+    }
+    return area;
+  }
+
   /** @param {number} k */
   block(k) { if (k >= 0) this.occ[k] = BLOCKED; }
 

@@ -517,9 +517,17 @@ export const CHEST_ART_OFFSET = [-4, -32];
 export const PORTER = { stationsEach: 3, row: { x0: 23, x1: 29, y: 24 }, build: { wooden_plank: 4, iron_nails: 8, iron_detail: 2 } };
 /** @type {(supplyStations: number) => number} */
 export const portersFor = (supplyStations) => Math.ceil(supplyStations / PORTER.stationsEach);
-export const SUPPLY_ZONE = { x0: 23, x1: 31, y: 27 };
-/** @type {(x: number, y: number) => number} cells from the zone (0 on it) */
-export const supplyZoneDistance = (x, y) => Math.abs(y - SUPPLY_ZONE.y) + Math.max(0, SUPPLY_ZONE.x0 - x, x - SUPPLY_ZONE.x1);
+// Where supplies leave the floor: the hallway above the East section (row 27) and the one east of the
+// Far north section, which meets its east column at rows 5-7. Supply stations can go anywhere; the zones
+// only pull them, weakly.
+/** @type {{ x0: number, x1: number, y0: number, y1: number }[]} */
+export const SUPPLY_ZONES = [{ x0: 23, x1: 31, y0: 27, y1: 27 }, { x0: 19, x1: 19, y0: 5, y1: 7 }];
+/** @type {(x: number, y: number) => number} cells from the nearest zone (0 on it) */
+export const supplyZoneDistance = (x, y) => {
+  let best = Infinity;
+  for (const z of SUPPLY_ZONES) best = Math.min(best, Math.max(0, z.x0 - x, x - z.x1) + Math.max(0, z.y0 - y, y - z.y1));
+  return best;
+};
 /** @type {(id: string) => boolean} */
 export const isSupplyItem = (id) => id.startsWith('supply_');
 

@@ -106,7 +106,7 @@ export default {
   'hint.station': 'Stacji nie można obracać. R przełącza między czterema układami wejść i wyjścia.',
   'hint.chest': 'Przyjmuje z każdej strony, wydaje na sąsiednie taśmy, które nie biegną do środka. Filtry wybierają strony, z których skrzynia wydaje.',
   'hint.porter': 'Zombie – tragarz zasobów, 1 szerokości i 2 wysokości: jeden potrzebny na każde 3 stacje zasobów. Planer ustawia je wzdłuż 23,24 do 29,24.',
-  'hint.supplyStation': 'Pobiera skrzynie „Zasoby: …” z taśmy po stronie wejścia. Planer ustawia je w rzędzie 27 lub blisko niego, x 23–31.',
+  'hint.supplyStation': 'Pobiera skrzynie „Zasoby: …” z taśmy po stronie wejścia. Planer może je ustawić w dowolnym miejscu podłogi, najlepiej blisko wyjścia zasobów.',
   'field.type': 'Typ',
   'field.level': 'Poziom',
   'field.layout': 'Układ',

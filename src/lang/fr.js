@@ -106,7 +106,7 @@ export default {
   'hint.station': 'Les stations ne pivotent pas. R fait défiler les quatre dispositions d\'entrées/sortie.',
   'hint.chest': 'Reçoit de tous les côtés, sort vers les tapis voisins qui ne pointent pas vers lui. Les filtres choisissent les côtés de sortie.',
   'hint.porter': 'Porteur de fournitures zombie, 1 de large et 2 de haut : il en faut un pour 3 stations de fournitures. Le planificateur les place de 23,24 à 29,24.',
-  'hint.supplyStation': 'Prend les caisses « Fournitures : … » d\'un tapis sur son côté d\'entrée. Le planificateur les place sur ou près de la ligne 27, x 23–31.',
+  'hint.supplyStation': 'Prend les caisses « Fournitures : … » d\'un tapis sur son côté d\'entrée. Le planificateur peut les placer n\'importe où sur le sol, de préférence près de la sortie des fournitures.',
   'field.type': 'Type',
   'field.level': 'Niveau',
   'field.layout': 'Disposition',

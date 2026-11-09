@@ -70,6 +70,16 @@ function grid(w, h) {
   return g;
 }
 
+test('router: floorAreas labels each connected floor area, and -1 off the floor', () => {
+  const g = grid(7, 3);
+  for (let y = 0; y < 3; y++) g.floor[g.key(3, y)] = 0; // a column of void splits the floor in two
+  const area = g.floorAreas();
+  assert.equal(area[g.key(0, 0)], area[g.key(2, 2)]);
+  assert.equal(area[g.key(4, 0)], area[g.key(6, 2)]);
+  assert.notEqual(area[g.key(0, 0)], area[g.key(4, 0)]);
+  assert.equal(area[g.key(3, 1)], -1);
+});
+
 test('router: straight route into a station port', () => {
   const g = grid(10, 3);
   const P = g.key(9, 1); // port cell, entered moving east
@@ -383,13 +393,39 @@ test('planner: places a 2x2 kitchen and routes it', () => {
   assert.ok(res.entities.some((e) => e.kind === 'station' && e.type === 'kitchen'));
 });
 
-test('planner: a "Supply: ..." output ends in a supply station on or near row 27, x 23–31', () => {
+test('planner: a "Supply: ..." output ends in one supply station and no output chest', () => {
   const layout = Layout.fromJSON(fs.readFileSync(new URL('../factory.json', import.meta.url), 'utf8'));
   const { res, out } = runPlan(layout, [{ item: 'supply_iron', rate: 1 }], 600);
   const ss = res.entities.filter((e) => e.kind === 'supply_station');
   assert.equal(ss.length, 1);
   assert.ok(!res.entities.some((e) => e.kind === 'chest' && e.role === 'output'), 'no output chest');
-  assert.ok(supplyZoneDistance(ss[0].x, ss[0].y) <= 6, `supply station at ${ss[0].x},${ss[0].y}`);
+  assert.deepEqual(res.failures, []);
+  assert.deepEqual(layoutIssues(out), []);
+});
+
+test('planner: any free floor cell is offered to a supply station, not only those nearest a zone', () => {
+  const layout = Layout.fromJSON(fs.readFileSync(new URL('../factory.json', import.meta.url), 'utf8'));
+  const pl = new Planner(layout, plan1([{ item: 'supply_iron', rate: 1 }], { distributors: distributorsOf(layout) }), { seed: 1 });
+  const far = pl.supplyCells.filter((c) => supplyZoneDistance(...pl.base.xy(c.k)) > 20);
+  assert.ok(far.length > 0, 'a candidate more than 20 cells from every zone');
+});
+
+test('catalog: supplyZoneDistance measures to the nearest supply zone', () => {
+  assert.equal(supplyZoneDistance(27, 27), 0); // on the south zone
+  assert.equal(supplyZoneDistance(19, 9), 2); // two below the north zone
+  assert.equal(supplyZoneDistance(23, 30), 3); // nearer the south zone than the north one
+});
+
+test('planner: supplies made on the north floor stay on it when the south is cut off', () => {
+  // Sections 3 and 4 stay unrepaired, so the north (rows 0-11, with the garden distributors)
+  // can't reach the south floor: its supply stations have to be on the north floor.
+  const layout = Layout.fromJSON(fs.readFileSync(new URL('../factory.json', import.meta.url), 'utf8'));
+  layout.setRepaired([...layout.repaired, 1, 2]);
+  const targets = [{ item: 'supply_flour', rate: 1 }, { item: 'supply_fabric', rate: 1 }];
+  const { res, out } = routedPlan(layout, targets, 1500, [1, 2, 3, 4, 5, 6], { distributors: new Set(['wheat', 'flax']) });
+  const ss = res.entities.filter((e) => e.kind === 'supply_station');
+  assert.equal(ss.length, 2);
+  for (const s of ss) assert.ok(s.y <= 11, `supply station at ${s.x},${s.y}`);
   assert.deepEqual(layoutIssues(out), []);
 });
 
@@ -448,6 +484,24 @@ test('planner: a Zombie Supply Porter for every 3 supply stations, along 23,24 t
   assert.equal(res.stats.power, out.power());
   // (A plan this big may leave connections unrouted at 400 iterations, so only the porter rule is checked.)
   assert.deepEqual(out.validate().filter((i) => /Zombie Supply Porter/.test(i.message)), []);
+});
+
+test('planner: with only section 1 repaired, a plan fed from its garden distributors stays on that floor', () => {
+  const layout = Layout.fromJSON(fs.readFileSync(new URL('../factory.json', import.meta.url), 'utf8'));
+  layout.setRepaired([...layout.repaired, 1]);
+  const targets = [{ item: 'supply_flour', rate: 1 }, { item: 'supply_fabric', rate: 1 }];
+  const pl = new Planner(layout, plan1(targets, { distributors: new Set(['wheat', 'flax']) }), { seed: 1 });
+  for (const spots of Object.values(pl.spots)) for (const p of spots) assert.ok(p.y <= 11, `a station spot at ${p.x},${p.y}, off the floor area with the garden distributors`);
+  const { res, out } = routedPlan(layout, targets, 3000, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], { distributors: new Set(['wheat', 'flax']) });
+  for (const e of res.entities.filter((e) => e.kind === 'station' || e.kind === 'supply_station')) assert.ok(e.y <= 11, `${e.kind} at ${e.x},${e.y}`);
+  assert.deepEqual(layoutIssues(out), []);
+});
+
+test('planner: a distributor with no floor in front of it does not take every station spot away', () => {
+  const layout = smallFactory();
+  layout.setTerrain(2, 12, VOID); // the cell in front of the stone distributor is not floor
+  const pl = new Planner(layout, plan1([{ item: 'stone_kit', rate: 1 }], { distributors: new Set(['stone']) }), { seed: 1 });
+  assert.ok(Object.values(pl.spots).every((spots) => spots.length > 0));
 });
 
 test('planner: chests (no power) stand in for belts at turns and after undergrounds, never on Supply lines', () => {

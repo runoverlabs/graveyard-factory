@@ -106,7 +106,7 @@ export default {
   'hint.station': 'Las estaciones no giran. R recorre las cuatro disposiciones de entrada/salida.',
   'hint.chest': 'Acepta desde cualquier lado y saca a las cintas vecinas que no apuntan hacia él. Los filtros eligen los lados que sacan.',
   'hint.porter': 'Porteador de suministros zombi, de 1 de ancho y 2 de alto: hace falta uno por cada 3 estaciones de suministro. El planificador los pone entre 23,24 y 29,24.',
-  'hint.supplyStation': 'Toma cajas «Suministro: …» de una cinta por su lado de entrada. El planificador las pone en la fila 27 o cerca, x 23–31.',
+  'hint.supplyStation': 'Toma cajas «Suministro: …» de una cinta por su lado de entrada. El planificador puede ponerlas en cualquier parte del suelo, preferiblemente cerca de por donde salen los suministros.',
   'field.type': 'Tipo',
   'field.level': 'Nivel',
   'field.layout': 'Disposición',

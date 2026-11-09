@@ -108,7 +108,7 @@ export default {
   'hint.station': 'Stations cannot rotate. R cycles through the four input/output layouts.',
   'hint.chest': 'Accepts from any side, outputs to neighbouring belts not pointing in. Filters pick the sides that output.',
   'hint.porter': 'Zombie Supply Porter, 1 wide and 2 high: one is needed for every 3 supply stations. The planner puts these along 23,24 to 29,24.',
-  'hint.supplyStation': 'Takes "Supply: …" crates from a belt on its input side. The planner puts these on or near row 27, x 23–31.',
+  'hint.supplyStation': 'Takes "Supply: …" crates from a belt on its input side. The planner can put these anywhere on the floor, preferably near where supplies leave it.',
   'field.type': 'Type',
   'field.level': 'Level',
   'field.layout': 'Layout',

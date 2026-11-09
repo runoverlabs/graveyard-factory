@@ -106,7 +106,7 @@ export default {
   'hint.station': 'Stationen lassen sich nicht drehen. R wechselt zwischen den vier Ein-/Ausgangslayouts.',
   'hint.chest': 'Nimmt von jeder Seite an, gibt an benachbarte Bänder ab, die nicht hineinzeigen. Filter bestimmen die ausgebenden Seiten.',
   'hint.porter': 'Zombie-Lieferträger, 1 breit und 2 hoch: Für je 3 Lieferstationen wird einer benötigt. Der Planer setzt sie entlang 23,24 bis 29,24.',
-  'hint.supplyStation': 'Nimmt „Lieferung: …“-Kisten von einem Band auf ihrer Eingangsseite. Der Planer setzt sie auf oder nahe Zeile 27, x 23–31.',
+  'hint.supplyStation': 'Nimmt „Lieferung: …“-Kisten von einem Band auf ihrer Eingangsseite. Der Planer kann sie überall auf dem Boden setzen, am liebsten dort, wo die Lieferungen den Boden verlassen.',
   'field.type': 'Typ',
   'field.level': 'Stufe',
   'field.layout': 'Layout',

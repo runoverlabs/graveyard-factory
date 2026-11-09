@@ -106,7 +106,7 @@ export default {
   'hint.station': 'İstasyonlar döndürülemez. R, dört giriş/çıkış düzeni arasında geçiş yapar.',
   'hint.chest': 'Her yandan kabul eder, içeri bakmayan komşu bantlara çıktı verir. Filtreler hangi yanların çıktı vereceğini seçer.',
   'hint.porter': 'Zombi Tedarik Taşıyıcısı, 1 geniş ve 2 yüksek: her 3 tedarik istasyonu için bir tane gerekir. Planlayıcı bunları 23,24 ile 29,24 arasına koyar.',
-  'hint.supplyStation': 'Giriş tarafındaki banttan "Tedarik: …" sandıklarını alır. Planlayıcı bunları 27. satıra ya da yakınına, x 23–31 arasına koyar.',
+  'hint.supplyStation': 'Giriş tarafındaki banttan "Tedarik: …" sandıklarını alır. Planlayıcı bunları zeminin herhangi bir yerine koyabilir; tercihen tedariklerin çıktığı yerin yakınına koyar.',
   'field.type': 'Tür',
   'field.level': 'Seviye',
   'field.layout': 'Düzen',

@@ -106,7 +106,7 @@ export default {
   'hint.station': 'As estações não giram. R alterna entre os quatro layouts de entrada/saída.',
   'hint.chest': 'Aceita de qualquer lado, envia para esteiras vizinhas que não apontem para ele. Os filtros escolhem os lados de saída.',
   'hint.porter': 'Carregador de Suprimentos Zumbi, 1 de largura e 2 de altura: é necessário um para cada 3 estações de suprimentos. O planejador os coloca ao longo de 23,24 a 29,24.',
-  'hint.supplyStation': 'Pega caixotes "Suprimentos: …" de uma esteira no lado de entrada. O planejador as coloca na linha 27 ou perto dela, x 23–31.',
+  'hint.supplyStation': 'Pega caixotes "Suprimentos: …" de uma esteira no lado de entrada. O planejador pode colocá-las em qualquer lugar do chão, de preferência perto de onde os suprimentos saem.',
   'field.type': 'Tipo',
   'field.level': 'Nível',
   'field.layout': 'Layout',
