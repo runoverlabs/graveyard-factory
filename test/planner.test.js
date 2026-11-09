@@ -91,6 +91,16 @@ test('router: a line out of a distributor starts with a belt, since the distribu
   assert.ok(route().steps[0].act >= 4, 'without the distributor an underground is the cheaper start');
 });
 
+test('router: with goals of different cost it ends at the cheapest overall, not the nearest', () => {
+  const g = grid(14, 3);
+  const near = g.key(3, 1), far = g.key(12, 1);
+  const goal = (/** @type {number} */ cost) => ({ mask: 1 << E, cost, end: { type: /** @type {const} */ ('newSupply') } });
+  const res = g.route({ starts: [{ k: g.key(0, 1), d: E, cost: 0, origin: { type: 'port' } }], targets: new Map([[near, goal(20)], [far, goal(0)]]), allow: new Set(), goalCells: [near, far] });
+  assert.ok(res && res.cost < 20, `cost ${res?.cost}`); // the free goal 12 cells away, not the near one that costs 20 to end at
+  // The lookahead counts a goal's cost, so the search doesn't expand around the near, dear goal (100 nodes without it).
+  assert.ok(g.expanded < 30, `${g.expanded} nodes expanded`);
+});
+
 test('router: straight route into a station port', () => {
   const g = grid(10, 3);
   const P = g.key(9, 1); // port cell, entered moving east

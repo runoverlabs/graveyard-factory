@@ -165,6 +165,7 @@ export class RouteGrid {
     this.parent = new Int32Array(m);
     this.action = new Int8Array(m);
     this.round = 0;
+    this.expanded = 0;
   }
 
   /** @param {number} x @param {number} y */
@@ -292,13 +293,16 @@ export class RouteGrid {
     const { starts, targets, flexChest, allow, exempt, noPass } = req;
     const round = ++this.round;
     const heap = new MinHeap();
-    const hx = req.goalCells?.map((k) => this.xy(k));
+    // The A* lookahead: the cheapest goal's own cost plus a belt per cell of distance to it. A goal's cost counts
+    // so that, with goals priced differently (a supply station far from a supply zone costs more), the search
+    // stops once a cheap finish is found.
+    const goals = (req.goalCells ?? []).map((k) => ({ x: k % this.W, y: (k / this.W) | 0, cost: targets.get(k)?.cost ?? 0 }));
     const h = (/** @type {number} */ k) => {
-      if (!hx?.length) return 0;
-      const [x, y] = this.xy(k);
+      if (!goals.length) return 0;
+      const x = k % this.W, y = (k / this.W) | 0;
       let best = Infinity;
-      for (const [gx, gy] of hx) best = Math.min(best, Math.abs(gx - x) + Math.abs(gy - y));
-      return best * this.cost.belt * 0.999;
+      for (const g of goals) best = Math.min(best, (Math.abs(g.x - x) + Math.abs(g.y - y)) * this.cost.belt * 0.999 + g.cost);
+      return best;
     };
     /** @param {number} k @param {number} d @param {number} s */
     const node = (k, d, s) => (k * 4 + d) * 2 + s;
@@ -319,7 +323,7 @@ export class RouteGrid {
       if (!(this.stamp[n] === round && this.dist[n] <= s.cost)) startOf.set(n, s);
       push(n, s.cost, -1, -1);
     }
-    let expanded = 0;
+    this.expanded = 0; // nodes expanded by this route (read by tests)
     // Targets with an extra cost: keep the cheapest finish found, and stop once
     // nothing left in the queue can beat it.
     /** @type {{ n: number, total: number, goal: RouteGoal } | null} */
@@ -330,7 +334,7 @@ export class RouteGrid {
       const n = heap.pop();
       const g = this.dist[n];
       const k = n >> 3, d = (n >> 1) & 3, straight = n & 1;
-      if (++expanded > 200000) break;
+      if (++this.expanded > 200000) break;
       // A chest only outputs onto a belt, so a route starting at a chest (the
       // `straight` starts) must lay at least one belt before it can finish.
       const fromChest = straight && this.parent[n] === -1;

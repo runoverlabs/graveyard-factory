@@ -106,8 +106,8 @@ export const FAIL_COST = 1000;
 export const OVER_POWER_COST = 20;
 // "Supply: ..." outputs end in a supply station, which may go on any free floor cell, preferably near a
 // supply zone (SUPPLY_ZONES, a pull to keep supply lines short): this much extra cost per cell away from the
-// nearest one.
-const SUPPLY_CORNER_COST = 1;
+// nearest one. Weak, so that a station can sit by its line when that routes better, at the price of longer porter walks.
+const SUPPLY_CORNER_COST = 0.1;
 // Extra cost of a buffered output (see `Edge.buffer`) that has no chest: only when a chest can't fit.
 const BUFFER_MISS_COST = 30;
 const sizeOf = (/** @type {StationInstance} */ s) => stationDims(s.type);
