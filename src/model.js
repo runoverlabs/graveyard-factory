@@ -625,6 +625,11 @@ export class Layout {
       return;
     }
     const target = this.entityAt(p.nx, p.ny);
+    // An underground's input end takes nothing from a distributor, from the front or the side (confirmed in-game).
+    if (ENTITY_KINDS[e.kind]?.feeds && target?.kind === 'underground' && p.nx === target.x && p.ny === target.y) {
+      add('warning', e, t('issue.distFeedsUndergroundInput', { what, target: describeEntity(target) }), [[p.x, p.y], [p.nx, p.ny]]);
+      return;
+    }
     if (e.kind === 'station' && target?.kind === 'chest' && DIRS[p.dir].dx !== 0) {
       add('warning', e, t('issue.sideOutputChest', { what, chest: describeEntity(target) }), [[p.x, p.y], [p.nx, p.ny]]);
       return;

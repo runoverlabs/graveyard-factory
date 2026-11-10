@@ -517,9 +517,17 @@ export const CHEST_ART_OFFSET = [-4, -32];
 export const PORTER = { stationsEach: 3, row: { x0: 23, x1: 29, y: 24 }, build: { wooden_plank: 4, iron_nails: 8, iron_detail: 2 } };
 /** @type {(supplyStations: number) => number} */
 export const portersFor = (supplyStations) => Math.ceil(supplyStations / PORTER.stationsEach);
-export const SUPPLY_ZONE = { x0: 23, x1: 31, y: 27 };
-/** @type {(x: number, y: number) => number} cells from the zone (0 on it) */
-export const supplyZoneDistance = (x, y) => Math.abs(y - SUPPLY_ZONE.y) + Math.max(0, SUPPLY_ZONE.x0 - x, x - SUPPLY_ZONE.x1);
+// Where supplies leave the floor: the hallway above the East section (row 27) and the one east of the
+// Far north section, which meets its east column at rows 5-7. Supply stations can go anywhere; the zones
+// only pull them.
+/** @type {{ x0: number, x1: number, y0: number, y1: number }[]} */
+export const SUPPLY_ZONES = [{ x0: 23, x1: 31, y0: 27, y1: 27 }, { x0: 19, x1: 19, y0: 5, y1: 7 }];
+/** @type {(x: number, y: number) => number} cells from the nearest zone (0 on it) */
+export const supplyZoneDistance = (x, y) => {
+  let best = Infinity;
+  for (const z of SUPPLY_ZONES) best = Math.min(best, Math.max(0, z.x0 - x, x - z.x1) + Math.max(0, z.y0 - y, y - z.y1));
+  return best;
+};
 /** @type {(id: string) => boolean} */
 export const isSupplyItem = (id) => id.startsWith('supply_');
 
@@ -528,7 +536,7 @@ export const isSupplyItem = (id) => id.startsWith('supply_');
 // The icon is the game's power gear, tinted yellow.
 /** @type {Partial<Record<import('./types.js').EntityKind, number>>} */
 // Chests and the Zombie Supply Porter use none (from the user).
-export const POWER_COST = { station: 1, belt: 1, underground: 2 };
+export const POWER_COST = { station: 1, belt: 1, underground: 2, supply_station: 1 };
 export const POWER_ICON = 'assets/ui/power.webp';
 
 // What each piece is built from (item id -> count), from the game's building
@@ -646,8 +654,9 @@ export const FACTORY_CELLAR = { x: -1, y: 14, rot: E };
 export const CELLAR_ITEMS = ['beer', 'wine_1', 'wine_2', 'wine_3'];
 // The cell a distributor (or the cellar) feeds may stay empty, or hold a belt or one of an
 // underground conveyor's belt cells (not its gap), neither pointing back into
-// the distributor; nothing else (confirmed by the user). A distributor feeds it
-// like a chest with one side.
+// the distributor; nothing else (confirmed by the user). A distributor feeds a belt
+// or an underground's output end like a chest with one side, but not its input end,
+// from the front or the side (confirmed in-game).
 /** @type {import('./types.js').EntityKind[]} */
 export const DISTRIBUTOR_FRONT_KINDS = ['belt', 'underground'];
 

@@ -165,6 +165,7 @@ export class RouteGrid {
     this.parent = new Int32Array(m);
     this.action = new Int8Array(m);
     this.round = 0;
+    this.expanded = 0;
   }
 
   /** @param {number} x @param {number} y */
@@ -189,6 +190,23 @@ export class RouteGrid {
     const out = [];
     for (let d = 0; d < 4; d++) { const j = this.step(k, d); if (j >= 0) out.push(j); }
     return out;
+  }
+
+  // The connected floor areas, as a label per cell (-1 off the floor).
+  floorAreas() {
+    const area = new Int32Array(this.W * this.H).fill(-1);
+    let n = 0;
+    for (let k0 = 0; k0 < area.length; k0++) {
+      if (!this.floor[k0] || area[k0] !== -1) continue;
+      area[k0] = n;
+      for (const stack = [k0]; stack.length;) {
+        for (const j of this.neighbours(stack.pop() ?? 0)) {
+          if (this.floor[j] && area[j] === -1) { area[j] = n; stack.push(j); }
+        }
+      }
+      n++;
+    }
+    return area;
   }
 
   /** @param {number} k */
@@ -261,7 +279,7 @@ export class RouteGrid {
   //   starts:  [{ k, d, cost, straight, noChest, origin }]  arrivals the route may
   //            begin with (noChest: must lay a belt before ending in a chest)
   //   targets: Map k -> { mask, end, cost }         arrivals that finish it (cost: extra
-  //            cost of finishing there, e.g. a supply station far from its corner)
+  //            cost of finishing there, e.g. a supply station far from a supply zone)
   //   flexChest: end by placing a chest on any suitable free cell
   //   allow:   Set of reserved cells this route may use
   //   exempt:  Map k -> rotation mask (belts allowed next to chests)
@@ -275,13 +293,16 @@ export class RouteGrid {
     const { starts, targets, flexChest, allow, exempt, noPass } = req;
     const round = ++this.round;
     const heap = new MinHeap();
-    const hx = req.goalCells?.map((k) => this.xy(k));
+    // The A* lookahead: the cheapest goal's own cost plus a belt per cell of distance to it. A goal's cost counts
+    // so that, with goals priced differently (a supply station far from a supply zone costs more), the search
+    // stops once a cheap finish is found.
+    const goals = (req.goalCells ?? []).map((k) => ({ x: k % this.W, y: (k / this.W) | 0, cost: targets.get(k)?.cost ?? 0 }));
     const h = (/** @type {number} */ k) => {
-      if (!hx?.length) return 0;
-      const [x, y] = this.xy(k);
+      if (!goals.length) return 0;
+      const x = k % this.W, y = (k / this.W) | 0;
       let best = Infinity;
-      for (const [gx, gy] of hx) best = Math.min(best, Math.abs(gx - x) + Math.abs(gy - y));
-      return best * this.cost.belt * 0.999;
+      for (const g of goals) best = Math.min(best, (Math.abs(g.x - x) + Math.abs(g.y - y)) * this.cost.belt * 0.999 + g.cost);
+      return best;
     };
     /** @param {number} k @param {number} d @param {number} s */
     const node = (k, d, s) => (k * 4 + d) * 2 + s;
@@ -302,7 +323,7 @@ export class RouteGrid {
       if (!(this.stamp[n] === round && this.dist[n] <= s.cost)) startOf.set(n, s);
       push(n, s.cost, -1, -1);
     }
-    let expanded = 0;
+    this.expanded = 0; // nodes expanded by this route (read by tests)
     // Targets with an extra cost: keep the cheapest finish found, and stop once
     // nothing left in the queue can beat it.
     /** @type {{ n: number, total: number, goal: RouteGoal } | null} */
@@ -313,7 +334,7 @@ export class RouteGrid {
       const n = heap.pop();
       const g = this.dist[n];
       const k = n >> 3, d = (n >> 1) & 3, straight = n & 1;
-      if (++expanded > 200000) break;
+      if (++this.expanded > 200000) break;
       // A chest only outputs onto a belt, so a route starting at a chest (the
       // `straight` starts) must lay at least one belt before it can finish.
       const fromChest = straight && this.parent[n] === -1;
@@ -348,8 +369,8 @@ export class RouteGrid {
         }
       }
       // Or an underground conveyor, entered from behind (not straight out of a
-      // chest: chests only output onto belts).
-      if (!straight && this._undergroundOk(k, d, allow)) {
+      // chest or a distributor: they only output onto belts).
+      if (!straight && this._undergroundOk(k, d, allow, this.parent[n] === -1)) {
         const nk = this.step(k, d, UNDERGROUND_LENGTH);
         if (nk >= 0) push(node(nk, d, 0), g + this.cost.underground, n, 4 + d);
       }
@@ -357,9 +378,10 @@ export class RouteGrid {
     return finish();
   }
 
-  /** @param {number} k @param {number} d @param {Set<number>} allow */
-  _undergroundOk(k, d, allow) {
+  /** @param {number} k @param {number} d @param {Set<number>} allow @param {boolean} [atStart] the line starts here */
+  _undergroundOk(k, d, allow, atStart = false) {
     if (this.gap[k] !== -1 || this.distFront[k] === d) return false;
+    if (atStart && this.distFront[k] === rev(d)) return false; // a line doesn't start with one out of a distributor
     for (let i = 0; i < UNDERGROUND_LENGTH; i++) {
       const c = this.step(k, d, i);
       if (c < 0 || !this.floor[c]) return false;

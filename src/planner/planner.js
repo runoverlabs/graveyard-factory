@@ -6,7 +6,7 @@
 // route costs (belts, turns, undergrounds, splitters, chests) plus a large
 // penalty per connection that could not be routed.
 
-import { STATIONS, RECIPE_BY_ID, DIRS, ENTITY_KINDS, CELLAR_ITEMS, GARDEN_ITEMS, entityCells, stationDims, stationVariants, isSupplyItem, supplyZoneDistance, PORTER, portersFor } from '../catalog.js';
+import { STATIONS, RECIPE_BY_ID, DIRS, ENTITY_KINDS, CELLAR_ITEMS, GARDEN_ITEMS, entityCells, stationDims, stationVariants, isSupplyItem, supplyZoneDistance, POWER_COST, PORTER, portersFor } from '../catalog.js';
 import { RouteGrid, DX, DY, ROUTE_COSTS, NO_CHEST_PORT, NO_CHEST_INPUT } from './router.js';
 import { powerOf, powerSupply } from '../model.js';
 
@@ -41,7 +41,7 @@ import { powerOf, powerSupply } from '../model.js';
  * @property {number} [gap] free cells kept between stations
  * @property {number} [failCost] penalty per unrouted connection
  * @property {number} [overPowerCost] penalty per point of power over the maximum
- * @property {number} [supplyCornerCost] extra cost per cell from the supply zone
+ * @property {number} [supplyCornerCost] extra cost per cell of routing to a supply station from the nearest supply zone
  * @property {'power' | 'materials'} [priority] what the routes save on: power (chests in place of belts) or build materials (few chests)
  * @property {number} [timeMs] search budget (used by the worker)
  * @property {boolean} [earlyStop] false: route every candidate to the end (see Planner.evaluate)
@@ -101,14 +101,13 @@ import { powerOf, powerSupply } from '../model.js';
 // routing everything always wins.
 export const FAIL_COST = 1000;
 // Score per point of power over the factory's maximum (its carousels are fixed,
-// so more can't be added; or the user's own maximum). Belts cost 1 power each (chests none), so over the
+// so more can't be added; or the user's own maximum). Belts and supply stations cost 1 power each (chests none), so over the
 // maximum every piece saved counts this much more.
 export const OVER_POWER_COST = 20;
-// "Supply: ..." outputs end in a supply station, preferably on or near SUPPLY_ZONE (a weak pull, to save power):
-// this much extra cost per cell away from it, and how many of the nearest free
-// cells are offered.
-const SUPPLY_CORNER_COST = 1;
-const SUPPLY_CANDIDATES = 40;
+// "Supply: ..." outputs end in a supply station, which may go on any free floor cell, preferably near a
+// supply zone (SUPPLY_ZONES, a pull to keep supply lines short): this much extra cost per cell away from the
+// nearest one. Weak, so that a station can sit by its line when that routes better, at the price of longer porter walks.
+const SUPPLY_CORNER_COST = 0.1;
 // Extra cost of a buffered output (see `Edge.buffer`) that has no chest: only when a chest can't fit.
 const BUFFER_MISS_COST = 30;
 const sizeOf = (/** @type {StationInstance} */ s) => stationDims(s.type);
@@ -275,6 +274,18 @@ export class Planner {
         }
       }
     }
+    // Stations only go on the floor areas that hold a distributor the plan takes materials from: on a split
+    // floor, a station in another area could never be fed.
+    const area = g.floorAreas();
+    /** @type {Set<number>} */
+    const usable = new Set();
+    for (const [item, s] of Object.entries(this.production.supply)) {
+      const dist = s.source === 'distributor' ? this.distributors.get(item) : null;
+      if (dist && area[dist.k] >= 0) usable.add(area[dist.k]);
+    }
+    if (usable.size) {
+      for (const key of Object.keys(this.spots)) this.spots[key] = this.spots[key].filter((p) => usable.has(area[g.key(p.x, p.y)]));
+    }
   }
 
   // The cellar puts everything it holds onto one belt. With one item it's a
@@ -369,27 +380,31 @@ export class Planner {
     }
   }
 
-  // Where supply stations may go: the free floor cells nearest SUPPLY_ZONE
-  // (outside distributor aprons), with their distance to it. Existing supply
-  // stations are targets too.
+  // Where supply stations may go: every free floor cell (outside distributor aprons), as a route target
+  // costing its distance to the nearest supply zone. Existing supply stations are targets too. Built once:
+  // the router only reads them.
   _buildSupplyCells() {
     const g = this.base, l = this.layout;
-    /** @param {number} x @param {number} y */
-    const dist = supplyZoneDistance;
-    const cells = [];
+    const cornerCost = this.options.supplyCornerCost ?? SUPPLY_CORNER_COST;
+    const cost = (/** @type {number} */ x, /** @type {number} */ y) => cornerCost * supplyZoneDistance(x, y);
+    /** @type {{ k: number, target: RouteTarget }[]} */
+    this.supplyCells = [];
     for (let y = 0; y < l.height; y++) for (let x = 0; x < l.width; x++) {
       const k = g.key(x, y);
-      if (g.floor[k] && g.occ[k] === 0 && g.reserved[k] === -1 && g.gap[k] === -1 && !this.apron[k]) cells.push({ k, dist: dist(x, y) });
+      if (!(g.floor[k] && g.occ[k] === 0 && g.reserved[k] === -1 && g.gap[k] === -1 && !this.apron[k])) continue;
+      // A new station is one more piece of power, which joining an existing one saves.
+      const price = cost(x, y) + POWER_COST.supply_station;
+      const target = /** @type {RouteTarget} */ ({ mask: 0b1111, cost: price, end: { type: 'newSupply' } });
+      this.supplyCells.push({ k, target });
     }
-    cells.sort((a, b) => a.dist - b.dist);
-    this.supplyCells = cells.slice(0, SUPPLY_CANDIDATES);
     this.supplyStations = l.entities.filter((e) => e.kind === 'supply_station').map((e) => ({
-      k: g.key(e.x, e.y), into: rev(e.rot), access: g.key(e.x + DIRS[e.rot].dx, e.y + DIRS[e.rot].dy), dist: dist(e.x, e.y),
+      k: g.key(e.x, e.y), access: g.key(e.x + DIRS[e.rot].dx, e.y + DIRS[e.rot].dy),
+      target: /** @type {RouteTarget} */ ({ mask: 1 << rev(e.rot), cost: cost(e.x, e.y), end: { type: 'port' } }),
     }));
   }
 
-  // Route targets for a "Supply: ..." output: a new supply station on a free
-  // candidate cell (entered from any side), or an existing station's input.
+  // Route targets for a "Supply: ..." output: a new supply station on any free
+  // floor cell (entered from any side), or an existing station's input.
   /**
    * @param {RouteGrid} g
    * @param {Map<number, RouteTarget>} targets
@@ -398,11 +413,11 @@ export class Planner {
   _supplyTargets(g, targets, allow) {
     for (const c of this.supplyCells) {
       if (g.occ[c.k] !== 0 || g.reserved[c.k] !== -1 || g.gap[c.k] !== -1) continue;
-      targets.set(c.k, { mask: 0b1111, cost: (this.options.supplyCornerCost ?? SUPPLY_CORNER_COST) * c.dist, end: { type: 'newSupply' } });
+      targets.set(c.k, c.target);
     }
     for (const st of this.supplyStations) {
       if (st.access < 0 || g.occ[st.access] !== 0) continue;
-      targets.set(st.k, { mask: 1 << st.into, cost: (this.options.supplyCornerCost ?? SUPPLY_CORNER_COST) * st.dist, end: { type: 'port' } });
+      targets.set(st.k, st.target);
       allow.add(st.access);
     }
   }
@@ -513,7 +528,7 @@ export class Planner {
         for (const swap of [false, true]) {
           const p = { x: spot.x, y: spot.y, variant, swap };
           if (!this.valid(s, p, placements)) continue;
-          const { inputs } = this.ports(s, p);
+          const { inputs, output } = this.ports(s, p);
           let cost = 0;
           for (const q of inputs) {
             const dist = this.distributors.get(q.item);
@@ -527,10 +542,9 @@ export class Planner {
             }
           }
           if (cx != null) cost += 0.3 * (Math.abs(cx - spot.x) + Math.abs(cy - spot.y));
-          // Makers of a final "Supply: ..." item start near the supply zone.
+          // Makers of a final "Supply: ..." item start near a supply zone.
           if (this.production.final[s.item] && isSupplyItem(s.item)) {
-            const out = this.ports(s, p).output;
-            cost += supplyZoneDistance(out.nx, out.ny);
+            cost += supplyZoneDistance(output.nx, output.ny);
           }
           // Leave room for belts: a one-cell gap fits a single belt only.
           for (const o of placed) {
